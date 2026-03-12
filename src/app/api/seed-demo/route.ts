@@ -7,6 +7,13 @@ const now = () => new Date().toISOString();
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 const daysFromNow = (d: number) => new Date(Date.now() + d * 86400000).toISOString().split('T')[0];
 
+type DemoMeasurement = {
+  fieldId: string;
+  fieldName: string;
+  fieldNameBn: string;
+  value: string;
+};
+
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -160,7 +167,12 @@ export async function POST(req: NextRequest) {
   const [shirt, pant, panjabi, blazer, kurta, sherwani, salwar] = products;
 
   // ── Orders ────────────────────────────────────────────────────────────────
-  const mkItem = (productId: string, measurements: any[], quantity: number, unitPrice: number) => ({
+  const mkItem = (
+    productId: string,
+    measurements: DemoMeasurement[],
+    quantity: number,
+    unitPrice: number,
+  ) => ({
     productId, measurements, quantity, unitPrice, totalPrice: quantity * unitPrice,
   });
 
