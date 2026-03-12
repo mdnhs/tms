@@ -22,6 +22,241 @@ interface InvoiceStaffRow {
   phone?: string;
 }
 
+interface InvoiceHeaderProps {
+  title: string;
+  invoiceNo: string;
+  shopName: string;
+  shopAddress?: string;
+  shopPhone?: string;
+  shopLogo?: string;
+  createdAt: string;
+  deliveryDateText?: string;
+  deliveryDateTitle?: string;
+  deliveryDateLabel?: string;
+  showDeliveryDate?: boolean;
+}
+
+function InvoiceHeader({
+  title,
+  invoiceNo,
+  shopName,
+  shopAddress,
+  shopPhone,
+  shopLogo,
+  createdAt,
+  deliveryDateText,
+  deliveryDateTitle,
+  deliveryDateLabel,
+  showDeliveryDate,
+}: InvoiceHeaderProps) {
+  return (
+    <div className="px-3.5 pt-4 pb-4 border-b border-border print-no-break">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          {shopLogo ? (
+            <img src={shopLogo} alt={shopName} className="w-14 h-14 rounded-xl object-cover border border-border shadow-sm" />
+          ) : (
+            <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+              <span className="text-2xl font-bold text-primary">{shopName.charAt(0)}</span>
+            </div>
+          )}
+          <div>
+            <h1 className="text-xl font-bold text-foreground font-bangla">{shopName}</h1>
+            {shopAddress ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3 h-3 shrink-0" /> {shopAddress}
+              </p>
+            ) : null}
+            {shopPhone ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <Phone className="w-3 h-3 shrink-0" /> {shopPhone}
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="text-right shrink-0">
+          <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-1">{title}</p>
+          <p className="text-lg font-bold text-foreground font-mono">{invoiceNo}</p>
+         <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
+           <Calendar className="w-3 h-3" />
+           {new Date(createdAt).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
+         </p>
+          {showDeliveryDate ? (
+            <div className="mt-1">
+              <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-1 text-right">{deliveryDateTitle}</p>
+              <div className="min-h-8 min-w-36 rounded-lg border border-slate-400 bg-white px-2 py-1 text-xs font-semibold text-slate-900 flex items-center justify-center">
+                {deliveryDateText || <span className="font-mono tracking-tight">{deliveryDateLabel}</span>}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CraftsmanMeasurementBoxProps {
+  label: string;
+  value: string;
+}
+
+function CraftsmanMeasurementBox({ label, value }: CraftsmanMeasurementBoxProps) {
+  return (
+    <div className="rounded-md bg-slate-50 border border-slate-200 px-1 py-1">
+      <p className="text-[10px] leading-tight text-slate-500 font-bangla">{label}</p>
+      <p className="text-[11px] font-semibold text-slate-900 mt-0.5 leading-tight">
+        {value || '—'}
+      </p>
+    </div>
+  );
+}
+
+interface CraftsmanInfoFieldProps {
+  label: string;
+  value: string;
+  inputStyle?: boolean;
+  borderless?: boolean;
+  compact?: boolean;
+  handwrittenPlaceholder?: string;
+}
+
+function CraftsmanInfoField({
+  label,
+  value,
+  inputStyle = false,
+  borderless = false,
+  compact = false,
+  handwrittenPlaceholder,
+}: CraftsmanInfoFieldProps) {
+  const wrapperClass = borderless
+    ? compact ? 'px-0.5 py-1' : 'px-0.5 py-1.5'
+    : compact ? 'rounded-lg border border-slate-300 px-2.5 py-1.5' : 'rounded-lg border border-slate-300 px-2.5 py-1.5';
+
+  const plainValueClass = compact
+    ? 'text-[11px] font-semibold text-slate-900 mt-0.5'
+    : 'text-xs font-semibold text-slate-900 mt-0.5';
+
+  const inputClass = compact
+    ? 'min-h-7 rounded-lg border border-slate-400 bg-white px-2 py-1 text-[11px] font-semibold text-slate-900'
+    : 'min-h-8 rounded-lg border border-slate-400 bg-white px-2 py-1 text-xs font-semibold text-slate-900';
+
+  return (
+    <div className={wrapperClass}>
+      <p className={`text-[10px] font-semibold text-slate-500 font-bangla ${borderless ? 'mb-1' : ''}`}>{label}</p>
+      {inputStyle ? (
+        <div className={`${inputClass} ${handwrittenPlaceholder ? 'flex items-center justify-between gap-1' : ''}`}>
+          <span>{value}</span>
+          {handwrittenPlaceholder ? (
+            <span className="font-mono text-[10px] text-slate-400 tracking-tight">{handwrittenPlaceholder}</span>
+          ) : null}
+        </div>
+      ) : (
+        <p className={borderless ? `${plainValueClass} ${compact ? '' : ''}` : `${compact ? 'font-mono text-xs' : 'font-mono text-xs'} font-bold text-slate-900 mt-0.5`}>
+          {value}
+        </p>
+      )}
+    </div>
+  );
+}
+
+interface CraftsmanSlipProps {
+  compact?: boolean;
+  showShopHeader?: boolean;
+  showDeliveryDateField?: boolean;
+  orderId: string;
+  invoiceNo: string;
+  createdAt: string;
+  assignedStaffName: string;
+  deliveryDateText: string;
+  shopName: string;
+  shopPhone?: string;
+  shopAddress?: string;
+  shopLogo?: string;
+  title: string;
+  orderLabel: string;
+  assignedToLabel: string;
+  deliveryDateLabel: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}
+
+function CraftsmanSlip({
+  compact = false,
+  showShopHeader = false,
+  showDeliveryDateField = false,
+  orderId,
+  invoiceNo,
+  createdAt,
+  assignedStaffName,
+  deliveryDateText,
+  shopName,
+  shopPhone,
+  shopAddress,
+  shopLogo,
+  title,
+  orderLabel,
+  assignedToLabel,
+  deliveryDateLabel,
+  children,
+  footer,
+}: CraftsmanSlipProps) {
+  return (
+    <div className={compact ? 'px-3.5 md:px-4 pt-2.5 pb-3 min-h-[210px]' : 'px-3.5 md:px-4 pt-3 pb-3.5 min-h-[390px]'}>
+      {showShopHeader ? (
+        <InvoiceHeader
+          title={title}
+          invoiceNo={invoiceNo}
+          shopName={shopName}
+          shopAddress={shopAddress}
+          shopPhone={shopPhone}
+          shopLogo={shopLogo}
+          createdAt={createdAt}
+          deliveryDateText={showDeliveryDateField ? deliveryDateText : ''}
+          deliveryDateTitle={showDeliveryDateField ? deliveryDateLabel : undefined}
+          deliveryDateLabel={showDeliveryDateField && !deliveryDateText ? '...../...../......' : undefined}
+          showDeliveryDate={showDeliveryDateField}
+        />
+      ) : null}
+
+      {showShopHeader ? (
+        <div className="grid grid-cols-2 gap-2.5 mt-2.5 mb-3">
+          <CraftsmanInfoField
+            label={orderLabel}
+            value={`#${orderId.slice(-8).toUpperCase()}`}
+            borderless
+          />
+          <CraftsmanInfoField
+            label={assignedToLabel}
+            value={assignedStaffName}
+            inputStyle
+            borderless
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2.5 mb-3">
+          <CraftsmanInfoField
+            compact
+            label={orderLabel}
+            value={`#${orderId.slice(-8).toUpperCase()}`}
+            borderless
+          />
+          <CraftsmanInfoField
+            compact
+            label={assignedToLabel}
+            value={assignedStaffName}
+            inputStyle
+            borderless
+          />
+        </div>
+      )}
+
+      <div className={compact ? 'mt-2.5' : ''}>{children}</div>
+      {footer}
+    </div>
+  );
+}
+
 export default function InvoicePage() {
   const params = useParams();
   const id = params?.id as string | undefined;
@@ -73,6 +308,48 @@ export default function InvoicePage() {
   const getProduct = (productId: string) => products.find(product => product.id === productId);
   const getStaffName = (staffId: string) => staffList.find(staff => staff.id === staffId)?.name;
 
+  const renderCraftsmanItems = (compact = false) => (
+    <div className="grid grid-cols-2 gap-2">
+      {order.items.map((item, index) => {
+        const product = getProduct(item.productId);
+        return (
+          <div
+            key={`${item.productId}-${index}`}
+            className={`rounded-xl border border-slate-200 ${compact ? 'px-2 py-1.5' : 'px-2.5 py-2'} break-inside-avoid`}
+          >
+            <div className="flex items-start justify-between gap-1.5 border-b border-dashed border-slate-300 pb-1">
+              <div>
+                <p className="text-[12px] font-semibold text-slate-900 font-bangla leading-tight">
+                  {product?.nameBn || product?.name || '-'}
+                </p>
+                <p className="text-[10px] text-slate-500">#{order.id.slice(-8).toUpperCase()}</p>
+              </div>
+              <div className="rounded-full border border-slate-300 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
+                {t('qty')}: {item.quantity}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1 pt-1.5">
+              {item.measurements.length > 0 ? (
+                item.measurements.map((measurement) => (
+                  <CraftsmanMeasurementBox
+                    key={measurement.fieldId}
+                    label={measurement.fieldNameBn}
+                    value={measurement.value || '—'}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
+                  {t('stepMeasurement')}: —
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto animate-pulse pb-8">
@@ -104,6 +381,7 @@ export default function InvoicePage() {
   const assignedStaff = order.assignedTo ? staffList.find(s => s.id === order.assignedTo) : undefined;
   const prefix = settings.invoicePrefix || 'INV-';
   const invoiceNo = `${prefix}${order.id.slice(-6).toUpperCase()}`;
+  const showDeliveryDateField = Boolean(order.deliveryDate);
 
   const handleDownloadPdf = async () => {
     if (!printRef.current) return;
@@ -158,57 +436,89 @@ export default function InvoicePage() {
       )}
 
       {/* ── Invoice Document ── */}
-      <div ref={printRef} className="print-area bg-white dark:bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+      {mode === 'craftsman' ? (
+        <div ref={printRef} className="print-area invoice-bn-tight invoice-ink bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="h-1 bg-slate-900" />
+
+          <CraftsmanSlip
+          showShopHeader
+          showDeliveryDateField={true}
+          orderId={order.id}
+          invoiceNo={invoiceNo}
+          createdAt={order.createdAt}
+          assignedStaffName={assignedStaffName || ''}
+          deliveryDateText={order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('bn-BD') : ''}
+          shopName={settings.shopNameBn || settings.shopName || 'S'}
+          shopPhone={settings.shopPhone}
+          shopAddress={settings.shopAddress}
+          shopLogo={settings.shopLogo}
+          title={t('craftsmanInvoice')}
+          orderLabel={t('order')}
+          assignedToLabel={t('assignedTo')}
+          deliveryDateLabel={t('deliveryDate')}
+          >
+            {renderCraftsmanItems(false)}
+          </CraftsmanSlip>
+
+          <div className="px-3.5 md:px-4 py-1.5 bg-slate-50 border-y border-dashed border-slate-400 text-center">
+            <p className="text-[11px] font-mono tracking-[0.18em] text-slate-500">- - - - - - - - - - - - - - - - - - - - - -</p>
+          </div>
+
+          <CraftsmanSlip
+          compact
+          showShopHeader
+          orderId={order.id}
+          invoiceNo={invoiceNo}
+          createdAt={order.createdAt}
+          assignedStaffName={assignedStaffName || ''}
+          deliveryDateText={order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('bn-BD') : ''}
+          shopName={settings.shopNameBn || settings.shopName || 'S'}
+          shopPhone={settings.shopPhone}
+          shopAddress={settings.shopAddress}
+          shopLogo={settings.shopLogo}
+          title={t('craftsmanInvoice')}
+          orderLabel={t('order')}
+          assignedToLabel={t('assignedTo')}
+          showDeliveryDateField={true}
+          deliveryDateLabel={t('deliveryDate')}
+            footer={
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-2">
+                <div className="flex flex-col justify-end min-h-[44px]">
+                  <p className="text-[10px] text-slate-500 mb-3 font-bangla">{t('wages')}</p>
+                  <div className="pt-1 text-xs font-medium text-slate-700">....................</div>
+                </div>
+                <div className="flex flex-col justify-end items-end min-h-[44px]">
+                  <p className="text-[10px] text-slate-500 mb-3 font-bangla">{t('signature')}</p>
+                  <div className="w-28 pt-1 text-right text-xs font-medium text-slate-700">....................</div>
+                </div>
+              </div>
+            }
+          >
+            {renderCraftsmanItems(true)}
+          </CraftsmanSlip>
+        </div>
+      ) : (
+      <div ref={printRef} className="print-area invoice-bn-tight invoice-ink bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
 
         {/* Top accent bar */}
         <div className="h-1.5 bg-gradient-to-r from-primary via-primary/80 to-primary/40" />
 
-        {/* Shop Header */}
-        <div className="px-8 pt-7 pb-6 border-b border-border print-no-break">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              {settings.shopLogo ? (
-                <img src={settings.shopLogo} alt={settings.shopName} className="w-14 h-14 rounded-xl object-cover border border-border shadow-sm" />
-              ) : (
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                  <span className="text-2xl font-bold text-primary">{(settings.shopNameBn || settings.shopName || 'S').charAt(0)}</span>
-                </div>
-              )}
-              <div>
-                <h1 className="text-xl font-bold text-foreground font-bangla">{settings.shopNameBn || settings.shopName}</h1>
-                {settings.shopAddress && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3 h-3 shrink-0" /> {settings.shopAddress}
-                  </p>
-                )}
-                {settings.shopPhone && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <Phone className="w-3 h-3 shrink-0" /> {settings.shopPhone}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Invoice number block */}
-            <div className="text-right shrink-0">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
-                {mode === 'craftsman' ? t('craftsmanInvoice') : t('customerInvoice')}
-              </p>
-              <p className="text-lg font-bold text-foreground font-mono">{invoiceNo}</p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
-                <Calendar className="w-3 h-3" />
-                {new Date(order.createdAt).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
-          </div>
-        </div>
+        <InvoiceHeader
+          title={t('customerInvoice')}
+          invoiceNo={invoiceNo}
+          shopName={settings.shopNameBn || settings.shopName || 'S'}
+          shopAddress={settings.shopAddress}
+          shopPhone={settings.shopPhone}
+          shopLogo={settings.shopLogo}
+          createdAt={order.createdAt}
+        />
 
         {/* Customer + Order Info */}
         <div className="px-8 py-5 grid grid-cols-2 gap-6 border-b border-border bg-muted/20 print-no-break">
           <div>
             {mode === 'customer' ? (
               <>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t('customerInfo')}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-2">{t('customerInfo')}</p>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -228,7 +538,7 @@ export default function InvoicePage() {
               </>
             ) : (
               <>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t('assignCraftsman')}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-2">{t('assignCraftsman')}</p>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -245,7 +555,7 @@ export default function InvoicePage() {
             )}
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">{t('orderInfo')}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-2">{t('orderInfo')}</p>
             <div className="space-y-1">
               <div className="flex items-center gap-1.5">
                 <Hash className="w-3 h-3 text-muted-foreground shrink-0" />
@@ -271,7 +581,7 @@ export default function InvoicePage() {
 
         {/* Products Table */}
         <div className="px-8 py-5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t('productName')}</p>
+          <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-3">{t('productName')}</p>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b-2 border-border">
@@ -304,7 +614,7 @@ export default function InvoicePage() {
         {/* Measurements — craftsman mode */}
         {mode === 'craftsman' && order.items.some(item => item.measurements.length > 0) && (
           <div className="px-8 py-5 border-t border-border bg-muted/10">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-3 flex items-center gap-1.5">
               <Ruler className="w-3 h-3" /> {t('stepMeasurement')}
             </p>
             <div className="space-y-4">
@@ -334,7 +644,7 @@ export default function InvoicePage() {
         {/* Special Notes */}
         {order.specialNotes && (
           <div className="px-8 py-4 border-t border-border">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{t('specialNotes')}</p>
+            <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-1">{t('specialNotes')}</p>
             <p className="text-sm text-muted-foreground font-bangla italic">{order.specialNotes}</p>
           </div>
         )}
@@ -385,6 +695,7 @@ export default function InvoicePage() {
         {/* Bottom accent bar */}
         <div className="h-1 bg-gradient-to-r from-primary/40 via-primary/80 to-primary" />
       </div>
+      )}
     </div>
   );
 }

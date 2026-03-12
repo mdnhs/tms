@@ -159,6 +159,36 @@ html {
   );
 }
 
+.invoice-bn-tight .font-bangla {
+  letter-spacing: -0.02em;
+  word-spacing: -0.08em;
+}
+
+.invoice-ink,
+.invoice-ink * {
+  color: #111827;
+}
+
+.invoice-ink .text-muted-foreground,
+.invoice-ink .text-muted-foreground * {
+  color: #4b5563 !important;
+}
+
+.invoice-ink .text-primary,
+.invoice-ink .text-primary * {
+  color: #0f766e !important;
+}
+
+.invoice-ink .text-destructive,
+.invoice-ink .text-destructive * {
+  color: #dc2626 !important;
+}
+
+.invoice-ink .text-emerald-600,
+.invoice-ink .text-emerald-600 * {
+  color: #059669 !important;
+}
+
 @media print {
   /* ── Hide all UI chrome ───────────────────────────────────────────── */
   body, html {
@@ -228,4 +258,9 @@ html {
 
   /* ── Measurement cards ───────────────────────────────────────────── */
   .print-area .bg-card.rounded-xl { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .invoice-bn-tight .font-bangla {
+    letter-spacing: -0.025em !important;
+    word-spacing: -0.1em !important;
+  }
 }
