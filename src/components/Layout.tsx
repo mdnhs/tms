@@ -52,7 +52,7 @@ function getRelativeTime(timestamp: string, lang: string): string {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme, density } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { orders, settings, readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead } = useData();
+  const { orders, settings, dataLoading, readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead } = useData();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -175,6 +175,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
+              {dataLoading && (
+                <div className="hidden md:flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] text-muted-foreground">
+                  <div className="h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span>Syncing data</span>
+                </div>
+              )}
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9 relative hover:bg-primary/10">
@@ -249,6 +255,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Button>
             </div>
           </header>
+
+          {dataLoading && (
+            <div className="sticky top-12 md:top-14 z-20 h-0.5 overflow-hidden bg-transparent">
+              <div className="h-full w-full origin-left animate-pulse bg-gradient-to-r from-primary/20 via-primary to-primary/20" />
+            </div>
+          )}
 
           <main className={`flex-1 overflow-y-auto pb-20 md:pb-8 ${
             density === 'compact'     ? 'p-2 md:p-3 lg:p-4' :

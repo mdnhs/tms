@@ -208,7 +208,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
 
     loadedRef.current = userId;
-    setAuthLoading(false);
     setDataLoading(false);
   }, []);
 
@@ -227,6 +226,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setOrderHistory([]);
       setSettings(DEFAULT_SETTINGS);
       setCategories([]);
+      setDataLoading(false);
       setAuthLoading(false);
       loadedRef.current = null;
       return;
@@ -235,6 +235,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setAuthLoading(false);
       return;
     }
+    setAuthLoading(false);
     void loadUserData(userId);
   }, [loadUserData, session.data?.user?.id, session.isPending]);
 
@@ -295,6 +296,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setOrderHistory([]);
     setSettings(DEFAULT_SETTINGS);
     setCategories([]);
+    setDataLoading(false);
+    setAuthLoading(false);
     loadedRef.current = null;
   }, []);
 
