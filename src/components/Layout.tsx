@@ -38,6 +38,10 @@ interface NotificationItem {
   route: string;
 }
 
+type WindowWithWebkitAudio = Window & typeof globalThis & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
 function getRelativeTime(timestamp: string, lang: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
   const mins = Math.floor(diff / 60000);
@@ -52,7 +56,7 @@ function getRelativeTime(timestamp: string, lang: string): string {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme, density } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const { orders, settings, dataLoading, readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead } = useData();
+  const { settings, dataLoading, readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead, notificationCounts } = useData();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -73,9 +77,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     } catch { return {}; }
   });
 
-  const pendingCount = orders.filter(o => o.status === 'pending').length;
-  const dueCount = orders.filter(o => o.dueAmount > 0 && o.status !== 'delivered').length;
-  const readyCount = orders.filter(o => o.status === 'ready').length;
+  const pendingCount = notificationCounts.pending;
+  const dueCount = notificationCounts.due;
+  const readyCount = notificationCounts.ready;
 
   const currentCounts = useRef<Record<string, number>>({ pending: pendingCount, due: dueCount, ready: readyCount });
 
@@ -125,7 +129,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const playNotificationSound = useCallback(() => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtor = window.AudioContext || (window as WindowWithWebkitAudio).webkitAudioContext;
+      if (!AudioCtor) return;
+      const ctx = new AudioCtor();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -137,7 +143,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + 0.3);
-    } catch {}
+    } catch {
+      // Notification sound is optional.
+    }
   }, []);
 
   useEffect(() => {

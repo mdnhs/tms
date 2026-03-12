@@ -70,6 +70,11 @@ interface DataContextType {
   hasActionPermission: (menuKey: string, action: 'view' | 'edit' | 'delete') => boolean;
   staffList: StaffMember[];
   getStaffName: (id: string) => string | undefined;
+  notificationCounts: {
+    pending: number;
+    due: number;
+    ready: number;
+  };
   reloadData: () => Promise<void>;
 }
 
@@ -94,6 +99,10 @@ async function apiFetch(path: string, options?: RequestInit) {
   return data;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Request failed';
+}
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const [authLoading, setAuthLoading] = useState(true);
@@ -111,40 +120,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [staffPermissionsObj, setStaffPermissionsObj] = useState<Record<string, string[]> | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [notificationCounts, setNotificationCounts] = useState({ pending: 0, due: 0, ready: 0 });
 
   const isLoggedIn = !!session.data?.user;
   const loadedRef = useRef<string | null>(null);
 
   const loadUserData = useCallback(async (userId: string) => {
     setDataLoading(true);
+    try {
+      const shellData = await apiFetch('/api/app-shell-data');
+      setUserType(shellData.userType || 'owner');
+      setStaffId(shellData.staffId || null);
+      setStaffName(shellData.staffName || null);
+      setStaffList(shellData.staffList || []);
+      setSettings(shellData.settings || DEFAULT_SETTINGS);
+      setNotificationCounts(shellData.notificationCounts || { pending: 0, due: 0, ready: 0 });
 
-    const results = await Promise.allSettled([
-      apiFetch('/api/staff-permissions'),
-      apiFetch('/api/customers'),
-      apiFetch('/api/products'),
-      apiFetch('/api/orders'),
-      apiFetch('/api/order-history'),
-      apiFetch('/api/settings'),
-      apiFetch('/api/categories'),
-    ]);
-
-    const [
-      permsResult,
-      customersResult,
-      productsResult,
-      ordersResult,
-      historyResult,
-      settingsResult,
-      categoriesResult,
-    ] = results;
-
-    if (permsResult.status === 'fulfilled') {
-      const permsData = permsResult.value;
-      setUserType(permsData.userType || 'owner');
-      setStaffId(permsData.staffId || null);
-      setStaffName(permsData.staffName || null);
-      setStaffList(permsData.staffList || []);
-      const perms = permsData.permissions || {};
+      const perms = shellData.staffPermissions || {};
       if (typeof perms === 'object' && !Array.isArray(perms)) {
         setStaffPermissions(Object.keys(perms));
         setStaffPermissionsObj(perms);
@@ -155,60 +147,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setStaffPermissions([]);
         setStaffPermissionsObj(null);
       }
-    } else {
-      console.error('Error loading staff permissions:', permsResult.reason);
+    } catch (error) {
+      console.error('Error loading app shell data:', error);
       setUserType('owner');
       setStaffId(null);
       setStaffName(null);
       setStaffList([]);
       setStaffPermissions([]);
       setStaffPermissionsObj(null);
-    }
-
-    if (customersResult.status === 'fulfilled') {
-      setCustomers(customersResult.value.customers || []);
-    } else {
-      console.error('Error loading customers:', customersResult.reason);
-      setCustomers([]);
-    }
-
-    if (productsResult.status === 'fulfilled') {
-      setProducts(productsResult.value.products || []);
-    } else {
-      console.error('Error loading products:', productsResult.reason);
-      setProducts([]);
-    }
-
-    if (ordersResult.status === 'fulfilled') {
-      setOrders(ordersResult.value.orders || []);
-    } else {
-      console.error('Error loading orders:', ordersResult.reason);
-      setOrders([]);
-    }
-
-    if (historyResult.status === 'fulfilled') {
-      setOrderHistory(historyResult.value.history || []);
-    } else {
-      console.error('Error loading order history:', historyResult.reason);
-      setOrderHistory([]);
-    }
-
-    if (settingsResult.status === 'fulfilled' && settingsResult.value.settings) {
-      setSettings(settingsResult.value.settings);
-    } else if (settingsResult.status === 'rejected') {
-      console.error('Error loading settings:', settingsResult.reason);
       setSettings(DEFAULT_SETTINGS);
-    }
-
-    if (categoriesResult.status === 'fulfilled') {
-      setCategories(categoriesResult.value.categories || []);
-    } else {
-      console.error('Error loading categories:', categoriesResult.reason);
+      setNotificationCounts({ pending: 0, due: 0, ready: 0 });
+      setCustomers([]);
+      setProducts([]);
+      setOrders([]);
+      setOrderHistory([]);
       setCategories([]);
+    } finally {
+      loadedRef.current = userId;
+      setDataLoading(false);
     }
-
-    loadedRef.current = userId;
-    setDataLoading(false);
   }, []);
 
   // Load all data when user logs in
@@ -226,6 +183,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setOrderHistory([]);
       setSettings(DEFAULT_SETTINGS);
       setCategories([]);
+      setNotificationCounts({ pending: 0, due: 0, ready: 0 });
       setDataLoading(false);
       setAuthLoading(false);
       loadedRef.current = null;
@@ -269,8 +227,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const result = await signIn.email({ email, password });
       if (result.error) return { success: false, error: result.error.message };
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error) };
     }
   }, []);
 
@@ -279,8 +237,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const result = await signUp.email({ email, password, name: fullName || '' });
       if (result.error) return { success: false, error: result.error.message };
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (error: unknown) {
+      return { success: false, error: getErrorMessage(error) };
     }
   }, []);
 
@@ -296,6 +254,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setOrderHistory([]);
     setSettings(DEFAULT_SETTINGS);
     setCategories([]);
+    setNotificationCounts({ pending: 0, due: 0, ready: 0 });
     setDataLoading(false);
     setAuthLoading(false);
     loadedRef.current = null;
@@ -357,7 +316,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setOrderHistory(prev => [entry, ...prev]);
     try {
       await apiFetch('/api/order-history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
-    } catch {}
+    } catch {
+      // Keep local history optimistic even if audit logging fails.
+    }
   }, [userType, staffName]);
 
   const getOrderHistory = useCallback((orderId: string) => orderHistory.filter(h => h.orderId === orderId), [orderHistory]);
@@ -456,6 +417,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       categories, addCategory, updateCategory, deleteCategory,
       readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead,
       staffList, getStaffName,
+      notificationCounts,
       reloadData: async () => {
         const userId = session.data?.user?.id;
         if (!userId) return;
