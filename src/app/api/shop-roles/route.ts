@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getShopId, genId } from '@/lib/get-shop';
 import { getCloudDb } from '@/lib/cloud-db';
-export { runtime, preferredRegion } from '@/lib/vercel-runtime';
+
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
