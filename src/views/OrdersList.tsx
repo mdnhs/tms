@@ -117,6 +117,7 @@ export default function OrdersList() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [updatingAssignedId, setUpdatingAssignedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -171,6 +172,7 @@ export default function OrdersList() {
   const getCustomer = (id: string) => customers.find((customer) => customer.id === id);
   const getProduct = (id: string) => products.find((product) => product.id === id);
   const getStaffName = (id: string) => staffList.find((staff) => staff.id === id)?.name;
+  const activeStaffList = staffList.filter((staff) => staff.isActive);
 
   const visibleOrders = userType === 'staff' && staffId
     ? orders.filter((order) => order.assignedTo === staffId)
@@ -353,6 +355,50 @@ export default function OrdersList() {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
     } finally {
       setUpdatingStatusId(null);
+    }
+  };
+
+  const handleAssignedToChange = async (order: Order, nextAssignedTo: string) => {
+    setUpdatingAssignedId(order.id);
+    const nextOrder = {
+      ...order,
+      assignedTo: nextAssignedTo || undefined,
+    };
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(nextOrder),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update assignee');
+
+      setOrders((prev) => prev.map((entry) => entry.id === order.id ? nextOrder : entry));
+
+      await fetch('/api/order-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: order.id,
+          action: 'edited',
+          description: t('orderEdited'),
+          changes: {
+            [t('assignedTo')]: {
+              from: getStaffName(order.assignedTo || '') || t('notAssigned'),
+              to: getStaffName(nextAssignedTo) || t('notAssigned'),
+            },
+          },
+        }),
+      }).catch(() => undefined);
+
+      void reloadData();
+      toast({ title: t('orderUpdated') });
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setUpdatingAssignedId(null);
     }
   };
 
@@ -545,6 +591,22 @@ export default function OrdersList() {
                     </select>
                     <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" />
                   </div>
+                  {hasActionPermission('orders', 'edit') && activeStaffList.length > 0 && (
+                    <div className="relative mr-1">
+                      <select
+                        value={order.assignedTo || ''}
+                        disabled={updatingAssignedId === order.id}
+                        onChange={e => void handleAssignedToChange(order, e.target.value)}
+                        className="appearance-none text-[10px] font-semibold pl-2 pr-5 py-1 rounded-full border cursor-pointer bg-card border-border text-foreground"
+                      >
+                        <option value="">{t('notAssigned')}</option>
+                        {activeStaffList.map(staff => (
+                          <option key={staff.id} value={staff.id}>{staff.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none" />
+                    </div>
+                  )}
                   <div className="flex-1 flex items-center justify-end gap-0.5">
                     {hasActionPermission('orders', 'edit') && (
                       <button onClick={() => openEdit(order)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title={t('edit')}>
@@ -632,7 +694,22 @@ export default function OrdersList() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {order.assignedTo && getStaffName(order.assignedTo) ? (
+                        {hasActionPermission('orders', 'edit') && activeStaffList.length > 0 ? (
+                          <div className="relative inline-block min-w-[150px]">
+                            <select
+                              value={order.assignedTo || ''}
+                              disabled={updatingAssignedId === order.id}
+                              onChange={e => void handleAssignedToChange(order, e.target.value)}
+                              className="appearance-none w-full text-xs font-medium pl-2.5 py-1.5 pr-7 rounded-full border cursor-pointer bg-card border-border text-foreground"
+                            >
+                              <option value="">{t('notAssigned')}</option>
+                              {activeStaffList.map((staff) => (
+                                <option key={staff.id} value={staff.id}>{staff.name}</option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none text-muted-foreground" />
+                          </div>
+                        ) : order.assignedTo && getStaffName(order.assignedTo) ? (
                           <div className="flex items-center gap-1.5">
                             <Hammer className="w-3 h-3 text-primary/70 shrink-0" />
                             <span className="text-xs font-medium text-primary">{getStaffName(order.assignedTo)}</span>
@@ -677,7 +754,7 @@ export default function OrdersList() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-0.5">
                           {hasActionPermission('orders', 'edit') && (
                             <button onClick={() => openEdit(order)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('edit')}>
                               <Pencil className="w-3.5 h-3.5" />
@@ -773,7 +850,7 @@ export default function OrdersList() {
 
               {staffList.filter(s => s.isActive).length > 0 && (
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">{t('assignCraftsman')}</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t('assignedTo')}</label>
                   <select
                     value={editAssignedTo}
                     onChange={e => setEditAssignedTo(e.target.value)}

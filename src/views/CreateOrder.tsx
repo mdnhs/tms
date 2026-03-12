@@ -986,7 +986,7 @@ export default function CreateOrder() {
             {staffList.filter((s) => s.isActive).length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium flex items-center gap-1">
-                  <UserCircle className="w-3 h-3" /> {t("assignCraftsman")}
+                  <UserCircle className="w-3 h-3" /> {t("assignedTo")}
                 </Label>
                 <select
                   value={assignedTo}
