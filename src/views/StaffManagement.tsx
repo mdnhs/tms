@@ -84,23 +84,22 @@ export default function StaffManagement() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [shopRes, staffRes, rolesRes] = await Promise.all([
-        fetch('/api/shops', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/shop-staff', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/shop-roles', { credentials: 'include' }).then(r => r.json()),
-      ]);
-      if (shopRes.shop) setShopId(shopRes.shop.id);
-      if (staffRes.staff) setStaff(staffRes.staff);
-      if (rolesRes.roles) setRoles(rolesRes.roles.map((r: any) => ({
+      const res = await fetch('/api/staff-management-data', { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load staff management');
+      setShopId(data.shopId || null);
+      if (data.staff) setStaff(data.staff);
+      if (data.roles) setRoles(data.roles.map((r: any) => ({
         ...r,
         permissions: Array.isArray(r.permissions) ? r.permissions : [],
       })));
     } catch (err) {
       console.error(err);
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -143,7 +142,9 @@ export default function StaffManagement() {
           credentials: 'include',
           body: JSON.stringify({ id: editingStaff.id, name: formName.trim(), phone: nextPhone, role_id: formRoleId || null, role: roleName, is_active: formActive }),
         });
-        if (!res.ok) throw new Error((await res.json()).error);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setStaff(prev => prev.map(member => member.id === editingStaff.id ? data.member : member));
         toast({ title: t('staffUpdated') });
       } else {
         const res = await fetch('/api/shop-staff', {
@@ -152,11 +153,12 @@ export default function StaffManagement() {
           credentials: 'include',
           body: JSON.stringify({ name: formName.trim(), phone: nextPhone, role_id: formRoleId || null, role: roleName, is_active: formActive }),
         });
-        if (!res.ok) throw new Error((await res.json()).error);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setStaff(prev => [...prev, data.member]);
         toast({ title: t('staffCreated') });
       }
       setDialogOpen(false);
-      fetchData();
     } catch (err: any) {
       toast({ title: t('error'), description: err.message, variant: 'destructive' });
     } finally { setSaving(false); }
@@ -166,11 +168,12 @@ export default function StaffManagement() {
     if (!deleteTarget) return;
     try {
       const res = await fetch(`/api/shop-staff?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setStaff(prev => prev.filter(member => member.id !== deleteTarget.id));
       toast({ title: t('staffDeleted') });
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
-      fetchData();
     } catch (err: any) {
       toast({ title: t('error'), description: err.message, variant: 'destructive' });
     }
@@ -198,9 +201,9 @@ export default function StaffManagement() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create account');
+      setStaff(prev => prev.map(member => member.id === credTarget.id ? { ...member, user_id: data.userId || member.user_id } : member));
       toast({ title: t('staffAccountCreated') });
       setCredDialogOpen(false);
-      fetchData();
     } catch (err: any) {
       toast({ title: t('error'), description: err.message, variant: 'destructive' });
     } finally { setCredLoading(false); }

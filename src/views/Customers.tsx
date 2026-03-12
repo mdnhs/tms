@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Customer } from '@/types';
@@ -40,10 +40,13 @@ function avatarGradient(name: string) {
 }
 
 export default function Customers() {
-  const { customers, addCustomer, updateCustomer, deleteCustomer, orders, hasActionPermission, settings } = useData();
+  const { hasActionPermission, settings, reloadData } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [orders, setOrders] = useState<Array<{ id: string; customerId: string; totalPrice: number; status: string }>>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '', photo: '' });
@@ -51,6 +54,29 @@ export default function Customers() {
   const formRef = useRef<HTMLFormElement>(null);
   useEnterNavigation(formRef);
   const cur = settings.currency;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/customers-page-data', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load customers');
+        if (cancelled) return;
+        setCustomers(data.customers || []);
+        setOrders(data.orders || []);
+      } catch (err) {
+        if (!cancelled) {
+          toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, [t, toast]);
 
   const customerStats = useMemo(() => {
     return customers.map(c => {
@@ -101,12 +127,30 @@ export default function Customers() {
 
     try {
       if (editing) {
-        await updateCustomer({ ...editing, ...form, phone: normalizedPhone });
+        const nextCustomer = { ...editing, ...form, phone: normalizedPhone };
+        const res = await fetch('/api/customers', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(nextCustomer),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update customer');
+        setCustomers(prev => prev.map(customer => customer.id === editing.id ? data.customer : customer));
         toast({ title: t('customerUpdated') });
       } else {
-        await addCustomer({ ...form, phone: normalizedPhone });
+        const res = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ...form, phone: normalizedPhone }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create customer');
+        setCustomers(prev => [data.customer, ...prev]);
         toast({ title: t('customerAdded') });
       }
+      void reloadData();
       setShowForm(false);
     } catch (err) {
       toast({
@@ -116,6 +160,35 @@ export default function Customers() {
       });
     }
   };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`/api/customers?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete customer');
+      setCustomers(prev => prev.filter(customer => customer.id !== deleteTarget.id));
+      void reloadData();
+      toast({ title: t('customerDeleted') });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 md:space-y-5 animate-pulse">
+        <div className="h-10 w-40 rounded bg-muted" />
+        <div className="h-10 w-full rounded-xl bg-muted" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-24 rounded-2xl border border-border bg-card" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
@@ -393,13 +466,7 @@ export default function Customers() {
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteCustomer(deleteTarget.id);
-                  setDeleteTarget(null);
-                  toast({ title: t('customerDeleted'), variant: 'destructive' });
-                }
-              }}
+              onClick={() => void handleDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {t('delete')}

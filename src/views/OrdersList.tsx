@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { ORDER_STATUS_LABELS, OrderStatus, Order, OrderItem } from '@/types';
+import { Customer, ORDER_STATUS_LABELS, OrderStatus, Order, OrderItem, Product, OrderHistoryEntry } from '@/types';
 import { Search, FileText, ChevronDown, Pencil, Banknote, Trash2, History, Clock, Edit3, CreditCard, PlusCircle, XCircle, ClipboardList, Plus, CalendarDays, Hammer } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,23 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 
+type StaffMember = {
+  id: string;
+  name: string;
+  phone?: string;
+  role: string;
+  isActive: boolean;
+};
+
 const STATUSES: (OrderStatus | 'all')[] = ['all', 'pending', 'in_production', 'ready', 'delivered', 'cancelled'];
 
 const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
-  all:           { badge: 'bg-muted text-muted-foreground border-border',                dot: 'bg-muted-foreground' },
-  pending:       { badge: 'bg-warning/15 text-warning border-warning/30',               dot: 'bg-warning' },
-  in_production: { badge: 'bg-primary/15 text-primary border-primary/30',               dot: 'bg-primary' },
-  ready:         { badge: 'bg-success/15 text-success border-success/30',               dot: 'bg-success' },
-  delivered:     { badge: 'bg-muted text-muted-foreground border-border',               dot: 'bg-muted-foreground' },
-  cancelled:     { badge: 'bg-destructive/15 text-destructive border-destructive/30',   dot: 'bg-destructive' },
+  all:           { badge: 'bg-muted text-muted-foreground border-border', dot: 'bg-muted-foreground' },
+  pending:       { badge: 'bg-warning/15 text-warning border-warning/30', dot: 'bg-warning' },
+  in_production: { badge: 'bg-primary/15 text-primary border-primary/30', dot: 'bg-primary' },
+  ready:         { badge: 'bg-success/15 text-success border-success/30', dot: 'bg-success' },
+  delivered:     { badge: 'bg-muted text-muted-foreground border-border', dot: 'bg-muted-foreground' },
+  cancelled:     { badge: 'bg-destructive/15 text-destructive border-destructive/30', dot: 'bg-destructive' },
 };
 
 const ACTION_ICONS = {
@@ -65,12 +73,52 @@ function avatarGradient(name?: string) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
+function OrdersListSkeleton() {
+  return (
+    <div className="space-y-4 md:space-y-5 animate-pulse">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2">
+          <div className="h-8 w-40 rounded bg-muted" />
+          <div className="h-4 w-24 rounded bg-muted" />
+        </div>
+        <div className="h-10 w-28 rounded-xl bg-muted" />
+      </div>
+      <div className="h-10 w-full rounded-xl bg-muted" />
+      <div className="flex gap-1.5 overflow-hidden">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-8 w-20 rounded-full bg-muted shrink-0" />
+        ))}
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-28 rounded-2xl border border-border bg-card" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function OrdersList() {
-  const { orders, getCustomer, getProduct, updateOrder, updateOrderStatus, deleteOrder, addOrderHistory, getOrderHistory, hasActionPermission, staffList, getStaffName, userType, staffId } = useData();
+  const { reloadData, hasActionPermission } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [userType, setUserType] = useState<'owner' | 'staff'>('owner');
+  const [staffId, setStaffId] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [editItems, setEditItems] = useState<OrderItem[]>([]);
@@ -84,17 +132,65 @@ export default function OrdersList() {
 
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [historyOrderId, setHistoryOrderId] = useState<string | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<OrderHistoryEntry[]>([]);
 
   const STATUS_LABELS: Record<string, string> = { all: t('all'), pending: t('pending'), in_production: t('in_production'), ready: t('ready'), delivered: t('delivered'), cancelled: t('cancelled') };
 
-  // Base orders for this user (staff see only their assigned orders)
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOrdersPage = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch('/api/orders-list-data', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load orders');
+        if (cancelled) return;
+        setOrders((data.orders || []) as Order[]);
+        setCustomers((data.customers || []) as Customer[]);
+        setProducts((data.products || []) as Product[]);
+        setStaffList((data.staff || []) as StaffMember[]);
+        setUserType(data.userType === 'staff' ? 'staff' : 'owner');
+        setStaffId(data.staffId || null);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load orders');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadOrdersPage();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const getCustomer = (id: string) => customers.find((customer) => customer.id === id);
+  const getProduct = (id: string) => products.find((product) => product.id === id);
+  const getStaffName = (id: string) => staffList.find((staff) => staff.id === id)?.name;
+
   const visibleOrders = userType === 'staff' && staffId
-    ? orders.filter(o => o.assignedTo === staffId)
+    ? orders.filter((order) => order.assignedTo === staffId)
     : orders;
+
+  const filtered = visibleOrders.filter((order) => {
+    if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+    if (!search) return true;
+    const customer = getCustomer(order.customerId);
+    const matchName = customer?.name.includes(search);
+    const matchPhone = customer?.phone.includes(search);
+    const matchId = order.id.includes(search);
+    return Boolean(matchName || matchPhone || matchId);
+  });
+
+  const { page, setPage, pageData: pagedOrders, totalPages, totalItems, from, to } = usePagination(filtered, 10);
 
   const openEdit = (order: Order) => {
     setEditOrder(order);
-    setEditItems(order.items.map(item => ({ ...item, measurements: [...item.measurements] })));
+    setEditItems(order.items.map((item) => ({ ...item, measurements: [...item.measurements] })));
     setEditAdvancePaid(order.advancePaid);
     setEditDeliveryDate(order.deliveryDate);
     setEditNotes(order.specialNotes || '');
@@ -102,30 +198,22 @@ export default function OrdersList() {
   };
 
   const updateEditItem = (idx: number, field: 'quantity' | 'unitPrice', value: number) => {
-    setEditItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value, totalPrice: field === 'quantity' ? value * item.unitPrice : item.quantity * value } : item));
+    setEditItems((prev) => prev.map((item, i) => i === idx ? { ...item, [field]: value, totalPrice: field === 'quantity' ? value * item.unitPrice : item.quantity * value } : item));
   };
 
   const updateEditMeasurement = (itemIdx: number, measIdx: number, value: string) => {
-    setEditItems(prev => prev.map((item, i) => i === itemIdx
+    setEditItems((prev) => prev.map((item, i) => i === itemIdx
       ? { ...item, measurements: item.measurements.map((m, j) => j === measIdx ? { ...m, value } : m) }
       : item
     ));
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editOrder) return;
+    setSavingEdit(true);
     const totalPrice = editItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
     const dueAmount = Math.max(0, totalPrice - editAdvancePaid);
-    const changes: Record<string, { from: string; to: string }> = {};
-    if (editOrder.advancePaid !== editAdvancePaid) changes[t('changeAdvance')] = { from: `৳${editOrder.advancePaid}`, to: `৳${editAdvancePaid}` };
-    if (editOrder.deliveryDate !== editDeliveryDate) changes[t('changeDeliveryDate')] = { from: editOrder.deliveryDate, to: editDeliveryDate };
-    if ((editOrder.specialNotes || '') !== editNotes) changes[t('changeNotes')] = { from: editOrder.specialNotes || '-', to: editNotes || '-' };
-    if ((editOrder.assignedTo || '') !== editAssignedTo) {
-      changes[t('assignedTo')] = { from: getStaffName(editOrder.assignedTo || '') || t('notAssigned'), to: getStaffName(editAssignedTo) || t('notAssigned') };
-    }
-
-    addOrderHistory(editOrder.id, 'edited', t('orderEdited'), Object.keys(changes).length > 0 ? changes : undefined);
-    updateOrder({
+    const nextOrder: Order = {
       ...editOrder,
       items: editItems,
       totalPrice,
@@ -134,9 +222,48 @@ export default function OrdersList() {
       deliveryDate: editDeliveryDate,
       specialNotes: editNotes || undefined,
       assignedTo: editAssignedTo || undefined,
-    });
-    setEditOrder(null);
-    toast({ title: t('orderUpdated') });
+    };
+
+    const changes: Record<string, { from: string; to: string }> = {};
+    if (editOrder.advancePaid !== editAdvancePaid) changes[t('changeAdvance')] = { from: `৳${editOrder.advancePaid}`, to: `৳${editAdvancePaid}` };
+    if (editOrder.deliveryDate !== editDeliveryDate) changes[t('changeDeliveryDate')] = { from: editOrder.deliveryDate, to: editDeliveryDate };
+    if ((editOrder.specialNotes || '') !== editNotes) changes[t('changeNotes')] = { from: editOrder.specialNotes || '-', to: editNotes || '-' };
+    if ((editOrder.assignedTo || '') !== editAssignedTo) {
+      changes[t('assignedTo')] = { from: getStaffName(editOrder.assignedTo || '') || t('notAssigned'), to: getStaffName(editAssignedTo) || t('notAssigned') };
+    }
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(nextOrder),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update order');
+
+      setOrders((prev) => prev.map((order) => order.id === editOrder.id ? nextOrder : order));
+
+      await fetch('/api/order-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: editOrder.id,
+          action: 'edited',
+          description: t('orderEdited'),
+          changes: Object.keys(changes).length > 0 ? changes : undefined,
+        }),
+      }).catch(() => undefined);
+
+      setEditOrder(null);
+      void reloadData();
+      toast({ title: t('orderUpdated') });
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const openPay = (order: Order) => {
@@ -144,52 +271,142 @@ export default function OrdersList() {
     setPayAmount('');
   };
 
-  const collectPayment = () => {
+  const collectPayment = async () => {
     if (!payOrder) return;
     const amount = Number(payAmount);
     if (!amount || amount <= 0 || amount > payOrder.dueAmount) return;
-    addOrderHistory(payOrder.id, 'payment_collected', `৳${amount.toLocaleString('bn-BD')} ${t('paymentCollectedLog')}`, {
-      [t('changePaid')]: { from: `৳${payOrder.advancePaid}`, to: `৳${payOrder.advancePaid + amount}` },
-      [t('changeDue')]: { from: `৳${payOrder.dueAmount}`, to: `৳${payOrder.dueAmount - amount}` },
-    });
-    updateOrder({
+
+    setSavingPayment(true);
+    const nextOrder: Order = {
       ...payOrder,
       advancePaid: payOrder.advancePaid + amount,
       dueAmount: payOrder.dueAmount - amount,
-    });
-    setPayOrder(null);
-    toast({ title: `৳${amount.toLocaleString('bn-BD')} ${t('paymentCollected')}` });
-  };
+    };
 
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-    deleteOrder(deleteTarget.id);
-    setDeleteTarget(null);
-    toast({ title: t('orderDeleted'), variant: 'destructive' });
-  };
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(nextOrder),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to collect payment');
 
-  const filtered = orders.filter(o => {
-    // Staff can only see orders assigned to them
-    if (userType === 'staff' && staffId && o.assignedTo !== staffId) return false;
-    if (statusFilter !== 'all' && o.status !== statusFilter) return false;
-    if (search) {
-      const customer = getCustomer(o.customerId);
-      const matchName = customer?.name.includes(search);
-      const matchPhone = customer?.phone.includes(search);
-      const matchId = o.id.includes(search);
-      if (!matchName && !matchPhone && !matchId) return false;
+      setOrders((prev) => prev.map((order) => order.id === payOrder.id ? nextOrder : order));
+
+      await fetch('/api/order-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: payOrder.id,
+          action: 'payment_collected',
+          description: `৳${amount.toLocaleString('bn-BD')} ${t('paymentCollectedLog')}`,
+          changes: {
+            [t('changePaid')]: { from: `৳${payOrder.advancePaid}`, to: `৳${payOrder.advancePaid + amount}` },
+            [t('changeDue')]: { from: `৳${payOrder.dueAmount}`, to: `৳${payOrder.dueAmount - amount}` },
+          },
+        }),
+      }).catch(() => undefined);
+
+      setPayOrder(null);
+      void reloadData();
+      toast({ title: `৳${amount.toLocaleString('bn-BD')} ${t('paymentCollected')}` });
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setSavingPayment(false);
     }
-    return true;
-  });
+  };
 
-  const { page, setPage, pageData: pagedOrders, totalPages, totalItems, from, to } = usePagination(filtered, 10);
+  const handleStatusChange = async (order: Order, status: OrderStatus) => {
+    setUpdatingStatusId(order.id);
+    const nextOrder = { ...order, status };
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(nextOrder),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update status');
 
-  const historyEntries = historyOrderId ? getOrderHistory(historyOrderId) : [];
+      setOrders((prev) => prev.map((entry) => entry.id === order.id ? nextOrder : entry));
+
+      await fetch('/api/order-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: order.id,
+          action: 'status_changed',
+          description: 'স্ট্যাটাস পরিবর্তন',
+          changes: { status: { from: order.status, to: status } },
+        }),
+      }).catch(() => undefined);
+
+      void reloadData();
+      toast({ title: t('statusUpdatedFull') });
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    try {
+      const res = await fetch(`/api/orders?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete order');
+
+      setOrders((prev) => prev.filter((order) => order.id !== deleteTarget.id));
+
+      await fetch('/api/order-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: deleteTarget.id,
+          action: 'deleted',
+          description: 'অর্ডার মুছে ফেলা হয়েছে',
+        }),
+      }).catch(() => undefined);
+
+      setDeleteTarget(null);
+      void reloadData();
+      toast({ title: t('orderDeleted'), variant: 'destructive' });
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const openHistory = async (orderId: string) => {
+    setHistoryOrderId(orderId);
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/order-history?orderId=${encodeURIComponent(orderId)}`, { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load history');
+      setHistoryEntries((data.history || []) as OrderHistoryEntry[]);
+    } catch (err) {
+      setHistoryEntries([]);
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  if (loading) return <OrdersListSkeleton />;
 
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
-
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
@@ -206,7 +423,12 @@ export default function OrdersList() {
         </Link>
       </div>
 
-      {/* Search + Filter row */}
+      {error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -219,7 +441,6 @@ export default function OrdersList() {
         </div>
       </div>
 
-      {/* Status filter chips */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {STATUSES.map(s => (
           <button
@@ -244,7 +465,6 @@ export default function OrdersList() {
         ))}
       </div>
 
-      {/* Mobile Card List */}
       <div className="md:hidden space-y-2.5">
         {filtered.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
@@ -262,7 +482,6 @@ export default function OrdersList() {
             const st = STATUS_STYLES[order.status] || STATUS_STYLES.delivered;
             return (
               <div key={order.id} className={`rounded-2xl border border-border shadow-sm overflow-hidden ${idx % 2 === 0 ? 'bg-card' : 'bg-muted/30'}`}>
-                {/* Card top */}
                 <div className="px-4 pt-3.5 pb-3 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm`}>
@@ -286,7 +505,6 @@ export default function OrdersList() {
                   </div>
                 </div>
 
-                {/* Amounts + delivery row */}
                 <div className="px-4 pb-3 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-4">
                     <div>
@@ -313,12 +531,12 @@ export default function OrdersList() {
                   )}
                 </div>
 
-                {/* Status selector + actions */}
                 <div className="border-t border-border px-3 py-2 flex items-center gap-1">
                   <div className="relative mr-1">
                     <select
                       value={order.status}
-                      onChange={e => { updateOrderStatus(order.id, e.target.value as OrderStatus); toast({ title: t('statusUpdated') }); }}
+                      disabled={updatingStatusId === order.id}
+                      onChange={e => void handleStatusChange(order, e.target.value as OrderStatus)}
                       className={`appearance-none text-[10px] font-semibold pl-2 pr-5 py-1 rounded-full border cursor-pointer bg-transparent ${st.badge}`}
                     >
                       {Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => (
@@ -338,7 +556,7 @@ export default function OrdersList() {
                         <Banknote className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button onClick={() => setHistoryOrderId(order.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title={t('history')}>
+                    <button onClick={() => void openHistory(order.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title={t('history')}>
                       <History className="w-3.5 h-3.5" />
                     </button>
                     <Link href={`/invoice/${order.id}`} className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary" title={t('invoice')}>
@@ -357,7 +575,6 @@ export default function OrdersList() {
         )}
       </div>
 
-      {/* Desktop Table */}
       <div className="hidden md:block rounded-2xl border border-border overflow-hidden shadow-sm">
         {filtered.length === 0 ? (
           <div className="bg-card px-5 py-16 text-center text-muted-foreground">
@@ -448,7 +665,8 @@ export default function OrdersList() {
                         <div className="relative inline-block">
                           <select
                             value={order.status}
-                            onChange={e => { updateOrderStatus(order.id, e.target.value as OrderStatus); toast({ title: t('statusUpdatedFull') }); }}
+                            disabled={updatingStatusId === order.id}
+                            onChange={e => void handleStatusChange(order, e.target.value as OrderStatus)}
                             className={`appearance-none text-xs font-semibold pl-2.5 py-1 pr-6 rounded-full border cursor-pointer bg-transparent ${st.badge}`}
                           >
                             {Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => (
@@ -470,7 +688,7 @@ export default function OrdersList() {
                               <Banknote className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => setHistoryOrderId(order.id)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('history')}>
+                          <button onClick={() => void openHistory(order.id)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('history')}>
                             <History className="w-3.5 h-3.5" />
                           </button>
                           <Link href={`/invoice/${order.id}`} className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title={t('invoice')}>
@@ -492,10 +710,8 @@ export default function OrdersList() {
         )}
       </div>
 
-      {/* Pagination */}
       <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />
 
-      {/* Edit Order Dialog */}
       <Dialog open={!!editOrder} onOpenChange={open => !open && setEditOrder(null)}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -578,12 +794,13 @@ export default function OrdersList() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOrder(null)}>{t('cancel')}</Button>
-            <Button onClick={saveEdit}>{t('save')}</Button>
+            <Button onClick={() => void saveEdit()} disabled={savingEdit}>
+              {savingEdit ? '...' : t('save')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Payment Collection Dialog */}
       <Dialog open={!!payOrder} onOpenChange={open => !open && setPayOrder(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -616,12 +833,13 @@ export default function OrdersList() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOrder(null)}>{t('cancel')}</Button>
-            <Button onClick={collectPayment} disabled={!payAmount || Number(payAmount) <= 0 || Number(payAmount) > (payOrder?.dueAmount || 0)}>{t('collect')}</Button>
+            <Button onClick={() => void collectPayment()} disabled={savingPayment || !payAmount || Number(payAmount) <= 0 || Number(payAmount) > (payOrder?.dueAmount || 0)}>
+              {savingPayment ? '...' : t('collect')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Order History Dialog */}
       <Dialog open={!!historyOrderId} onOpenChange={open => !open && setHistoryOrderId(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -631,7 +849,9 @@ export default function OrdersList() {
             <DialogDescription>#{historyOrderId?.slice(-6)} — {t('allChangesLog')}</DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
-            {historyEntries.length === 0 ? (
+            {historyLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">Loading...</div>
+            ) : historyEntries.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground text-sm">{t('noHistory')}</div>
             ) : (
               <div className="relative pl-6 space-y-0">
@@ -674,7 +894,6 @@ export default function OrdersList() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -685,7 +904,9 @@ export default function OrdersList() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t('delete')}</AlertDialogAction>
+            <AlertDialogAction onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deletingId === deleteTarget?.id}>
+              {deletingId === deleteTarget?.id ? '...' : t('delete')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

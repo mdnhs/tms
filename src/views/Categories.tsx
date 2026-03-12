@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Plus, Trash2, Tag, Edit2, Check, X, LayoutGrid } from 'lucide-react';
@@ -30,13 +30,39 @@ const CAT_GRADIENTS = [
 ];
 
 export default function Categories() {
-  const { categories, addCategory, updateCategory, deleteCategory, products } = useData();
+  const { reloadData } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [products, setProducts] = useState<Array<{ category: string }>>([]);
   const [newCategory, setNewCategory] = useState('');
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/products-page-data', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load categories');
+        if (cancelled) return;
+        setCategories(data.categories || []);
+        setProducts(data.products || []);
+      } catch (err) {
+        if (!cancelled) {
+          toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, [t, toast]);
 
   const handleAdd = () => {
     const name = newCategory.trim();
@@ -45,9 +71,24 @@ export default function Categories() {
       toast({ title: t('categoryExists'), variant: 'destructive' });
       return;
     }
-    addCategory(name);
-    setNewCategory('');
-    toast({ title: t('categoryAdded') });
+    void (async () => {
+      try {
+        const res = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to add category');
+        setCategories(prev => [...prev, name]);
+        setNewCategory('');
+        void reloadData();
+        toast({ title: t('categoryAdded') });
+      } catch (err) {
+        toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+      }
+    })();
   };
 
   const startEdit = (cat: string) => {
@@ -62,19 +103,59 @@ export default function Categories() {
       toast({ title: t('categoryExists'), variant: 'destructive' });
       return;
     }
-    updateCategory(editingCat, name);
-    setEditingCat(null);
-    toast({ title: t('categoryUpdated') });
+    void (async () => {
+      try {
+        const res = await fetch('/api/categories', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ oldName: editingCat, newName: name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update category');
+        setCategories(prev => prev.map(category => category === editingCat ? name : category));
+        setProducts(prev => prev.map(product => product.category === editingCat ? { ...product, category: name } : product));
+        setEditingCat(null);
+        void reloadData();
+        toast({ title: t('categoryUpdated') });
+      } catch (err) {
+        toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+      }
+    })();
   };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    deleteCategory(deleteTarget);
-    setDeleteTarget(null);
-    toast({ title: t('categoryDeleted') });
+    void (async () => {
+      try {
+        const res = await fetch(`/api/categories?name=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE', credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to delete category');
+        setCategories(prev => prev.filter(category => category !== deleteTarget));
+        setDeleteTarget(null);
+        void reloadData();
+        toast({ title: t('categoryDeleted') });
+      } catch (err) {
+        toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+      }
+    })();
   };
 
   const { page, setPage, pageData: pagedCategories, totalPages, totalItems, from, to } = usePagination(categories, 10);
+
+  if (loading) {
+    return (
+      <div className="space-y-4 md:space-y-5 animate-pulse">
+        <div className="h-10 w-40 rounded bg-muted" />
+        <div className="h-10 w-full max-w-md rounded-xl bg-muted" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <div key={index} className="h-32 rounded-2xl border border-border bg-card" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">

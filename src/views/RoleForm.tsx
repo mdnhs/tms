@@ -63,7 +63,6 @@ export default function RoleForm({ roleId }: RoleFormProps) {
 
   const [loading, setLoading] = useState(!!roleId);
   const [saving, setSaving] = useState(false);
-  const [shopId, setShopId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formNameBn, setFormNameBn] = useState('');
   const [formPermissions, setFormPermissions] = useState<PermissionsMap>({});
@@ -72,13 +71,9 @@ export default function RoleForm({ roleId }: RoleFormProps) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [shopRes, rolesRes] = await Promise.all([
-        fetch('/api/shops', { credentials: 'include' }).then(r => r.json()),
-        isEdit ? fetch('/api/shop-roles', { credentials: 'include' }).then(r => r.json()) : Promise.resolve(null),
-      ]);
-      if (shopRes.shop) setShopId(shopRes.shop.id);
-      if (isEdit && rolesRes?.roles) {
-        const role = rolesRes.roles.find((r: any) => r.id === roleId);
+      if (isEdit && roleId) {
+        const rolesRes = await fetch(`/api/shop-roles?id=${encodeURIComponent(roleId)}`, { credentials: 'include' }).then(r => r.json());
+        const role = rolesRes?.roles?.[0];
         if (role) {
           setFormName(role.name);
           setFormNameBn(role.name_bn || '');
@@ -140,7 +135,7 @@ export default function RoleForm({ roleId }: RoleFormProps) {
   const clearAll = () => setFormPermissions({});
 
   const handleSave = async () => {
-    if (!formName.trim() || !shopId) return;
+    if (!formName.trim()) return;
     setSaving(true);
     try {
       const body = { name: formName.trim(), name_bn: formNameBn.trim(), permissions: formPermissions };

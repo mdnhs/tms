@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { ORDER_STATUS_LABELS } from '@/types';
+import { Customer, ORDER_STATUS_LABELS, Order, Product } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileText, List, Users, CalendarIcon, BarChart3, TrendingUp, Wallet, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -45,14 +45,41 @@ function nameInitials(name: string) {
 }
 
 export default function Reports() {
-  const { orders, getCustomer, getProduct, settings } = useData();
+  const { settings } = useData();
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [period, setPeriod] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('orders');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const cur = settings.currency;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/orders-list-data', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load reports');
+        if (cancelled) return;
+        setOrders(data.orders || []);
+        setCustomers(data.customers || []);
+        setProducts(data.products || []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, []);
+
+  const getCustomer = (id: string) => customers.find(customer => customer.id === id);
+  const getProduct = (id: string) => products.find(product => product.id === id);
 
   const filteredOrders = useMemo(() => {
     let result = orders;
@@ -138,6 +165,23 @@ export default function Reports() {
     { label: t('totalAdvance'), value: `${cur}${summary.totalAdvance.toLocaleString()}`, icon: Wallet, color: 'text-chart-3', bg: 'bg-chart-3/10 border-chart-3/20' },
     { label: t('totalDue'), value: `${cur}${summary.totalDue.toLocaleString()}`, icon: AlertCircle, color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
   ];
+
+  if (loading) {
+    return (
+      <div className="space-y-4 md:space-y-5 animate-pulse">
+        <div className="h-10 w-40 rounded bg-muted" />
+        <div className="flex gap-2">
+          <div className="h-9 w-32 rounded-xl bg-muted" />
+          <div className="h-9 w-32 rounded-xl bg-muted" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-24 rounded-2xl bg-card border border-border" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">

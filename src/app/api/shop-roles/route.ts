@@ -6,14 +6,28 @@ import { getCloudDb } from '@/lib/cloud-db';
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
 
   const shopId = await getShopId(session.user.id);
-  if (!shopId) return NextResponse.json({ roles: [] });
+  if (!shopId) {
+    return NextResponse.json(
+      { roles: [] },
+      { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=20' } },
+    );
+  }
 
   const cloud = getCloudDb(shopId);
-  const { data, error } = await cloud.from('shop_roles').select('*').eq('shop_id', shopId).order('created_at', { ascending: true });
+  let query = cloud.from('shop_roles').select('*').eq('shop_id', shopId).order('created_at', { ascending: true });
+  if (id) {
+    query = query.eq('id', id);
+  }
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ roles: data || [] });
+  return NextResponse.json(
+    { roles: data || [] },
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=20' } },
+  );
 }
 
 export async function POST(req: NextRequest) {

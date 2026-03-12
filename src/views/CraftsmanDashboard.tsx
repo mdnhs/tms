@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, OrderStatus } from '@/types';
+import { Customer, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, Order, OrderStatus, Product } from '@/types';
 import {
   Hammer, FileText, Calendar, Ruler,
   Clock, Wrench, CheckCircle2, AlertTriangle,
@@ -26,7 +25,9 @@ function avatarGradient(name: string) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-const STATUS_STYLES: Record<string, { bg: string; icon: any; iconColor: string; value: string; bar: string }> = {
+type StatusIconComponent = typeof Clock | typeof Wrench | typeof CheckCircle2;
+
+const STATUS_STYLES: Record<string, { bg: string; icon: StatusIconComponent; iconColor: string; value: string; bar: string }> = {
   pending:       { bg: 'bg-warning/10 border-warning/20',   icon: Clock,        iconColor: 'text-warning',  value: 'text-warning',  bar: 'bg-warning' },
   in_production: { bg: 'bg-primary/10 border-primary/20',  icon: Wrench,       iconColor: 'text-primary',  value: 'text-primary',  bar: 'bg-primary' },
   ready:         { bg: 'bg-success/10 border-success/20',  icon: CheckCircle2, iconColor: 'text-success',  value: 'text-success',  bar: 'bg-success' },
@@ -34,11 +35,42 @@ const STATUS_STYLES: Record<string, { bg: string; icon: any; iconColor: string; 
 
 /* ── component ───────────────────────────────────────── */
 export default function CraftsmanDashboard() {
-  const { orders, getCustomer, getProduct, staffList, userType, staffId } = useData();
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
+  const [userType, setUserType] = useState<'owner' | 'staff'>('owner');
+  const [staffId, setStaffId] = useState<string | null>(null);
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/orders-list-data', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load craftsman dashboard');
+        if (cancelled) return;
+        setOrders(data.orders || []);
+        setCustomers(data.customers || []);
+        setProducts(data.products || []);
+        setStaffList(data.staff || []);
+        setUserType(data.userType === 'staff' ? 'staff' : 'owner');
+        setStaffId(data.staffId || null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, []);
+
   const getStaffName = (id: string) => staffList.find(s => s.id === id)?.name || t('notAssigned');
+  const getCustomer = (id: string) => customers.find(customer => customer.id === id);
+  const getProduct = (id: string) => products.find(product => product.id === id);
 
   const assignedOrders = useMemo(
     () => orders.filter(o => {
@@ -77,6 +109,19 @@ export default function CraftsmanDashboard() {
     setExpandedOrders(prev => ({ ...prev, [orderId]: !prev[orderId] }));
 
   const total = assignedOrders.length;
+
+  if (loading) {
+    return (
+      <div className="space-y-5 animate-pulse">
+        <div className="h-10 w-56 rounded bg-muted" />
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="h-28 rounded-2xl border border-border bg-card" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 animate-fade-in">

@@ -106,11 +106,12 @@ export default function RoleManagement() {
     if (!deleteTarget) return;
     try {
       const res = await fetch(`/api/shop-roles?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setRoles(prev => prev.filter(role => role.id !== deleteTarget.id));
       toast({ title: t('roleDeleted') });
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
-      fetchRoles();
     } catch (err: any) {
       toast({ title: t('error'), description: err.message, variant: 'destructive' });
     }

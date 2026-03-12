@@ -1,27 +1,86 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types';
+import { Customer, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, Order, Product } from '@/types';
 import { Printer, ArrowLeft, Download, User, Phone, MapPin, Calendar, Hash, CheckCircle2, Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type InvoiceMode = 'customer' | 'craftsman';
 
+interface InvoiceProductRow {
+  id: string;
+  name: string;
+  name_bn?: string;
+  nameBn?: string;
+}
+
+interface InvoiceStaffRow {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
 export default function InvoicePage() {
   const params = useParams();
   const id = params?.id as string | undefined;
-  const { getOrder, getCustomer, getProduct, settings, getStaffName, staffList, hasActionPermission, userType } = useData();
+  const { settings, hasActionPermission, userType } = useData();
   const { t } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [order, setOrder] = useState<Order | undefined>();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [staffList, setStaffList] = useState<Array<{ id: string; name: string; phone?: string }>>([]);
 
   const canCustomer = userType === 'owner' || hasActionPermission('customer_invoice', 'view');
   const canCraftsman = userType === 'owner' || hasActionPermission('craftsman_invoice', 'view');
 
   const printRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<InvoiceMode>(canCustomer ? 'customer' : 'craftsman');
-  const order = id ? getOrder(id) : undefined;
-  const customer = order ? getCustomer(order.customerId) : undefined;
+  const customer = order ? customers.find(entry => entry.id === order.customerId) : undefined;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/invoice-data/${id}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load invoice');
+        if (cancelled) return;
+        setOrder(data.order);
+        setCustomers(data.customers || []);
+        setProducts((data.products || []).map((product: InvoiceProductRow) => ({
+          id: product.id,
+          name: product.name,
+          nameBn: product.name_bn || product.nameBn,
+        })));
+        setStaffList((data.staff || []).map((staff: InvoiceStaffRow) => ({
+          id: staff.id,
+          name: staff.name,
+          phone: staff.phone || undefined,
+        })));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  const getProduct = (productId: string) => products.find(product => product.id === productId);
+  const getStaffName = (staffId: string) => staffList.find(staff => staff.id === staffId)?.name;
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto animate-pulse pb-8">
+        <div className="h-10 w-48 rounded bg-muted mb-5" />
+        <div className="h-[640px] rounded-2xl border border-border bg-card" />
+      </div>
+    );
+  }
 
   if (!order || !customer) {
     return (

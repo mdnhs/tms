@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Product, MeasurementField } from '@/types';
@@ -52,10 +52,13 @@ function cardGradient(name: string) {
 }
 
 export default function Products() {
-  const { products, addProduct, updateProduct, deleteProduct, categories, hasActionPermission, settings } = useData();
+  const { hasActionPermission, settings, reloadData } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
   const cur = settings.currency;
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', nameBn: '', category: '', basePrice: '', image: '' });
@@ -65,6 +68,29 @@ export default function Products() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const formRef = useRef<HTMLFormElement>(null);
   useEnterNavigation(formRef);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/products-page-data', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load products');
+        if (cancelled) return;
+        setProducts(data.products || []);
+        setCategories(data.categories || []);
+      } catch (err) {
+        if (!cancelled) {
+          toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void loadData();
+    return () => { cancelled = true; };
+  }, [t, toast]);
 
   const filtered = useMemo(() => {
     return products.filter(p => {
@@ -95,7 +121,7 @@ export default function Products() {
     setFields(f => f.map((field, idx) => idx === i ? { ...field, [key]: val } : field));
   const removeField = (i: number) => setFields(f => f.filter((_, idx) => idx !== i));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.basePrice) return;
     const data = {
@@ -106,15 +132,73 @@ export default function Products() {
       image: form.image || undefined,
       measurementFields: fields.filter(f => f.name),
     };
-    if (editing) {
-      updateProduct({ ...editing, ...data });
-      toast({ title: t('productUpdated') });
-    } else {
-      addProduct(data);
-      toast({ title: t('productAdded') });
+    try {
+      if (editing) {
+        const res = await fetch('/api/products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ...editing, ...data }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to update product');
+        setProducts(prev => prev.map(product => product.id === editing.id ? result.product : product));
+        toast({ title: t('productUpdated') });
+      } else {
+        const res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Failed to create product');
+        setProducts(prev => [result.product, ...prev]);
+        if (data.category && !categories.includes(data.category)) {
+          setCategories(prev => [...prev, data.category]);
+        }
+        toast({ title: t('productAdded') });
+      }
+      void reloadData();
+      setShowForm(false);
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
     }
-    setShowForm(false);
   };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`/api/products?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete product');
+      setProducts(prev => prev.filter(product => product.id !== deleteTarget.id));
+      void reloadData();
+      toast({ title: t('productDeleted') });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 md:space-y-5 animate-pulse">
+        <div className="h-10 w-40 rounded bg-muted" />
+        <div className="h-10 w-full rounded-xl bg-muted" />
+        <div className="flex gap-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-8 w-24 rounded-xl bg-muted" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-40 rounded-2xl border border-border bg-card" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
@@ -412,13 +496,7 @@ export default function Products() {
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (deleteTarget) {
-                  deleteProduct(deleteTarget.id);
-                  setDeleteTarget(null);
-                  toast({ title: t('productDeleted'), variant: 'destructive' });
-                }
-              }}
+              onClick={() => void handleDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {t('delete')}
