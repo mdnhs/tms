@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useSession, changeEmail, changePassword as authChangePassword } from "@/lib/auth-client";
+import { normalizeBangladeshMobile } from "@/lib/bd-phone";
 
 type Tab = 'shop' | 'invoice' | 'notifications' | 'appearance' | 'account' | 'data';
 const SEED_PROGRESS_STEPS = [
@@ -444,9 +445,26 @@ export default function Settings() {
     } finally { setImportLoading(false); }
   };
 
-  const handleSave = () => {
-    updateSettings(form);
-    toast({ title: t('settingsSaved'), description: t('settingsSavedDesc') });
+  const handleSave = async () => {
+    const shopPhone = form.shopPhone.trim();
+    const normalizedShopPhone = shopPhone ? normalizeBangladeshMobile(shopPhone) : '';
+    if (shopPhone && !normalizedShopPhone) {
+      toast({ title: t('invalidBdMobile'), variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const nextForm = { ...form, shopPhone: normalizedShopPhone || '' };
+      await updateSettings(nextForm);
+      setForm(nextForm);
+      toast({ title: t('settingsSaved'), description: t('settingsSavedDesc') });
+    } catch (err) {
+      toast({
+        title: t('error'),
+        description: err instanceof Error ? err.message : 'Request failed',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getShopId, genId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
+import { BANGLADESH_MOBILE_ERROR, normalizeBangladeshMobile } from '@/lib/bd-phone';
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -24,6 +25,12 @@ export async function PUT(req: NextRequest) {
   let shopId = await getShopId(session.user.id);
 
   const settings = await req.json();
+  const shopPhone = typeof settings?.shopPhone === 'string' ? settings.shopPhone.trim() : '';
+  const normalizedShopPhone = shopPhone ? normalizeBangladeshMobile(shopPhone) : '';
+  if (shopPhone && !normalizedShopPhone) {
+    return NextResponse.json({ error: BANGLADESH_MOBILE_ERROR }, { status: 400 });
+  }
+  const nextSettings = { ...settings, shopPhone: normalizedShopPhone || '' };
   const supabase = getGlobalSupabase()!;
 
   if (!shopId) {
@@ -45,13 +52,13 @@ export async function PUT(req: NextRequest) {
   if (existing) {
     await supabase
       .from('shop_settings')
-      .update({ data: settings, updated_at: new Date().toISOString() })
+      .update({ data: nextSettings, updated_at: new Date().toISOString() })
       .eq('shop_id', shopId);
   } else {
     await supabase.from('shop_settings').insert({
       id: genId(),
       shop_id: shopId,
-      data: settings,
+      data: nextSettings,
     });
   }
   return NextResponse.json({ success: true });

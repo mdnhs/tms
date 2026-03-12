@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getCloudDb } from '@/lib/cloud-db';
 import { getShopId, genId } from '@/lib/get-shop';
+import { BANGLADESH_MOBILE_ERROR, normalizeBangladeshMobile } from '@/lib/bd-phone';
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -24,6 +25,12 @@ export async function POST(req: NextRequest) {
   if (!shopId) return NextResponse.json({ error: 'No shop found' }, { status: 400 });
 
   const { name, phone, role, role_id, is_active } = await req.json();
+  const trimmedPhone = typeof phone === 'string' ? phone.trim() : '';
+  const normalizedPhone = trimmedPhone ? normalizeBangladeshMobile(trimmedPhone) : '';
+  if (trimmedPhone && !normalizedPhone) {
+    return NextResponse.json({ error: BANGLADESH_MOBILE_ERROR }, { status: 400 });
+  }
+  const nextPhone = normalizedPhone || '';
   const id = genId();
 
   const cloud = getCloudDb(shopId);
@@ -31,7 +38,7 @@ export async function POST(req: NextRequest) {
     id,
     shop_id: shopId,
     name,
-    phone: phone || '',
+    phone: nextPhone,
     role: role || '',
     role_id: role_id || null,
     is_active: is_active !== false,
@@ -45,6 +52,12 @@ export async function PATCH(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id, name, phone, role, role_id, is_active } = await req.json();
+  const trimmedPhone = typeof phone === 'string' ? phone.trim() : '';
+  const normalizedPhone = trimmedPhone ? normalizeBangladeshMobile(trimmedPhone) : '';
+  if (trimmedPhone && !normalizedPhone) {
+    return NextResponse.json({ error: BANGLADESH_MOBILE_ERROR }, { status: 400 });
+  }
+  const nextPhone = normalizedPhone || '';
 
   const shopId = await getShopId(session.user.id);
   if (!shopId) return NextResponse.json({ error: 'No shop found' }, { status: 400 });
@@ -52,7 +65,7 @@ export async function PATCH(req: NextRequest) {
   const cloud = getCloudDb(shopId);
   const { data, error } = await cloud.from('shop_staff').update({
     name,
-    phone: phone || '',
+    phone: nextPhone,
     role: role || '',
     role_id: role_id || null,
     is_active: is_active !== false,

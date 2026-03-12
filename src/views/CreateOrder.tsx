@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEnterNavigation } from "@/hooks/useEnterNavigation";
+import { normalizeBangladeshMobile } from "@/lib/bd-phone";
 
 interface DraftItem {
   productId: string;
@@ -164,11 +165,25 @@ export default function CreateOrder() {
 
   const handleAddCustomer = async () => {
     if (!newCustomer.name || !newCustomer.phone) return;
-    const c = await addCustomer(newCustomer);
-    setCustomerId(c.id);
-    setShowAddCustomer(false);
-    setNewCustomer({ name: "", phone: "", address: "", notes: "" });
-    setStep(2);
+    const normalizedPhone = normalizeBangladeshMobile(newCustomer.phone);
+    if (!normalizedPhone) {
+      toast({ title: t("invalidBdMobile"), variant: "destructive" });
+      return;
+    }
+
+    try {
+      const c = await addCustomer({ ...newCustomer, phone: normalizedPhone });
+      setCustomerId(c.id);
+      setShowAddCustomer(false);
+      setNewCustomer({ name: "", phone: "", address: "", notes: "" });
+      setStep(2);
+    } catch (err) {
+      toast({
+        title: t("error"),
+        description: err instanceof Error ? err.message : "Request failed",
+        variant: "destructive",
+      });
+    }
   };
 
   const sendSmsNotification = async (order: {

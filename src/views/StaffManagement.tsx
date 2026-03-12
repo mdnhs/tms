@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { normalizeBangladeshMobile } from '@/lib/bd-phone';
 
 interface StaffMember {
   id: string;
@@ -116,7 +117,22 @@ export default function StaffManagement() {
   };
 
   const handleSave = async () => {
-    if (!formName.trim() || !shopId) return;
+    if (!formName.trim()) {
+      toast({ title: t('staffNameRequired'), variant: 'destructive' });
+      return;
+    }
+    if (!shopId) {
+      toast({ title: t('error'), description: 'No shop found', variant: 'destructive' });
+      return;
+    }
+    const trimmedPhone = formPhone.trim();
+    const normalizedPhone = trimmedPhone ? normalizeBangladeshMobile(trimmedPhone) : '';
+    if (trimmedPhone && !normalizedPhone) {
+      toast({ title: t('invalidBdMobile'), variant: 'destructive' });
+      return;
+    }
+    const nextPhone = normalizedPhone || '';
+
     setSaving(true);
     try {
       const roleName = roles.find(r => r.id === formRoleId)?.name || '';
@@ -125,7 +141,7 @@ export default function StaffManagement() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ id: editingStaff.id, name: formName.trim(), phone: formPhone.trim(), role_id: formRoleId || null, role: roleName, is_active: formActive }),
+          body: JSON.stringify({ id: editingStaff.id, name: formName.trim(), phone: nextPhone, role_id: formRoleId || null, role: roleName, is_active: formActive }),
         });
         if (!res.ok) throw new Error((await res.json()).error);
         toast({ title: t('staffUpdated') });
@@ -134,7 +150,7 @@ export default function StaffManagement() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ name: formName.trim(), phone: formPhone.trim(), role_id: formRoleId || null, role: roleName, is_active: formActive }),
+          body: JSON.stringify({ name: formName.trim(), phone: nextPhone, role_id: formRoleId || null, role: roleName, is_active: formActive }),
         });
         if (!res.ok) throw new Error((await res.json()).error);
         toast({ title: t('staffCreated') });

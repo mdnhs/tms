@@ -20,11 +20,11 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 
 const NAV_ITEMS = [
   { path: '/', labelKey: 'dashboard', icon: LayoutDashboard, permKey: 'dashboard', color: 'text-sky-400' },
+  { path: '/create-order', labelKey: 'createOrder', icon: ShoppingCart, permKey: 'create_order', color: 'text-blue-400' },
+  { path: '/orders', labelKey: 'orders', icon: ClipboardList, permKey: 'orders', color: 'text-orange-400' },
   { path: '/customers', labelKey: 'customers', icon: Users, permKey: 'customers', color: 'text-violet-400' },
   { path: '/products', labelKey: 'products', icon: Package, permKey: 'products', color: 'text-emerald-400' },
   { path: '/categories', labelKey: 'categories_menu', icon: Tag, permKey: 'categories', color: 'text-amber-400' },
-  { path: '/create-order', labelKey: 'createOrder', icon: ShoppingCart, permKey: 'create_order', color: 'text-blue-400' },
-  { path: '/orders', labelKey: 'orders', icon: ClipboardList, permKey: 'orders', color: 'text-orange-400' },
   { path: '/reports', labelKey: 'reports', icon: BarChart3, permKey: 'reports', color: 'text-cyan-400' },
   { path: '/craftsman', labelKey: 'craftsmanView', icon: Hammer, permKey: 'craftsman_view', color: 'text-yellow-400' },
   { path: '/staff', labelKey: 'staffMenu', icon: UserCog, permKey: 'staff', ownerOnly: true, color: 'text-pink-400' },

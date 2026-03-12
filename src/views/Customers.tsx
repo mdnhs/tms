@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { normalizeBangladeshMobile } from '@/lib/bd-phone';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,17 +90,31 @@ export default function Customers() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.phone) return;
-    if (editing) {
-      updateCustomer({ ...editing, ...form });
-      toast({ title: t('customerUpdated') });
-    } else {
-      addCustomer(form);
-      toast({ title: t('customerAdded') });
+    const normalizedPhone = normalizeBangladeshMobile(form.phone);
+    if (!normalizedPhone) {
+      toast({ title: t('invalidBdMobile'), variant: 'destructive' });
+      return;
     }
-    setShowForm(false);
+
+    try {
+      if (editing) {
+        await updateCustomer({ ...editing, ...form, phone: normalizedPhone });
+        toast({ title: t('customerUpdated') });
+      } else {
+        await addCustomer({ ...form, phone: normalizedPhone });
+        toast({ title: t('customerAdded') });
+      }
+      setShowForm(false);
+    } catch (err) {
+      toast({
+        title: t('error'),
+        description: err instanceof Error ? err.message : 'Request failed',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
