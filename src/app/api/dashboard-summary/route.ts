@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { getCloudDb } from '@/lib/cloud-db';
 import { getShopId } from '@/lib/get-shop';
 import { ORDER_STATUS_LABELS, OrderStatus } from '@/types';
+export { runtime, preferredRegion } from '@/lib/vercel-runtime';
 
 interface OrderListRow {
   id: string;
