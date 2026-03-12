@@ -1,0 +1,499 @@
+'use client';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { Customer, Product, Order, OrderStatus, ShopSettings, OrderHistoryEntry, OrderHistoryAction } from '@/types';
+import { signIn, signUp, signOut, useSession } from '@/lib/auth-client';
+
+const DEFAULT_SETTINGS: ShopSettings = {
+  shopName: 'Tailoring Shop',
+  shopNameBn: 'টেইলারিং শপ',
+  shopAddress: '',
+  shopPhone: '',
+  shopLogo: '',
+  currency: '৳',
+  invoicePrefix: 'INV-',
+  defaultAdvancePercent: 50,
+  enableSMS: false,
+  enablePrintAutoOpen: false,
+  smsApiKey: '',
+  smsSenderId: '',
+  smsBalanceThreshold: 50,
+};
+
+const DEFAULT_PRODUCTS: Product[] = [
+  {
+    id: 'p1', name: 'Shirt', nameBn: 'শার্ট', category: 'Upper', basePrice: 800,
+    measurementFields: [
+      { id: 'f1', name: 'Collar', nameBn: 'কলার' },
+      { id: 'f2', name: 'Chest', nameBn: 'বুক' },
+      { id: 'f3', name: 'Waist', nameBn: 'কোমর' },
+      { id: 'f4', name: 'Shoulder', nameBn: 'কাঁধ' },
+      { id: 'f5', name: 'Sleeve', nameBn: 'হাতা' },
+      { id: 'f6', name: 'Length', nameBn: 'লম্বা' },
+    ],
+  },
+  {
+    id: 'p2', name: 'Pant', nameBn: 'প্যান্ট', category: 'Lower', basePrice: 700,
+    measurementFields: [
+      { id: 'f7', name: 'Waist', nameBn: 'কোমর' },
+      { id: 'f8', name: 'Hip', nameBn: 'হিপ' },
+      { id: 'f9', name: 'Thigh', nameBn: 'উরু' },
+      { id: 'f10', name: 'Knee', nameBn: 'হাঁটু' },
+      { id: 'f11', name: 'Bottom', nameBn: 'মোহরা' },
+      { id: 'f12', name: 'Length', nameBn: 'লম্বা' },
+    ],
+  },
+  {
+    id: 'p3', name: 'Panjabi', nameBn: 'পাঞ্জাবি', category: 'Traditional', basePrice: 1200,
+    measurementFields: [
+      { id: 'f13', name: 'Chest', nameBn: 'বুক' },
+      { id: 'f14', name: 'Waist', nameBn: 'কোমর' },
+      { id: 'f15', name: 'Shoulder', nameBn: 'কাঁধ' },
+      { id: 'f16', name: 'Sleeve', nameBn: 'হাতা' },
+      { id: 'f17', name: 'Length', nameBn: 'লম্বা' },
+    ],
+  },
+  {
+    id: 'p4', name: 'Blazer', nameBn: 'ব্লেজার', category: 'Formal', basePrice: 3000,
+    measurementFields: [
+      { id: 'f18', name: 'Chest', nameBn: 'বুক' },
+      { id: 'f19', name: 'Waist', nameBn: 'কোমর' },
+      { id: 'f20', name: 'Shoulder', nameBn: 'কাঁধ' },
+      { id: 'f21', name: 'Sleeve', nameBn: 'হাতা' },
+      { id: 'f22', name: 'Length', nameBn: 'লম্বা' },
+      { id: 'f23', name: 'Back Width', nameBn: 'পিঠের প্রস্থ' },
+    ],
+  },
+];
+
+const DEFAULT_CATEGORIES = ['Upper', 'Lower', 'Traditional', 'Formal'];
+
+interface StaffMember {
+  id: string;
+  name: string;
+  phone?: string;
+  role: string;
+  isActive: boolean;
+}
+
+interface DataContextType {
+  isLoggedIn: boolean;
+  authLoading: boolean;
+  dataLoading: boolean;
+  userType: 'owner' | 'staff' | null;
+  staffId: string | null;
+  staffPermissions: string[];
+  loginWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signupWithEmail: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+  customers: Customer[];
+  addCustomer: (c: Omit<Customer, 'id' | 'createdAt'>) => Promise<Customer>;
+  updateCustomer: (c: Customer) => Promise<void>;
+  deleteCustomer: (id: string) => Promise<void>;
+  products: Product[];
+  addProduct: (p: Omit<Product, 'id'>) => Promise<Product>;
+  updateProduct: (p: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  orders: Order[];
+  addOrder: (o: Omit<Order, 'id' | 'createdAt'>) => Promise<Order>;
+  updateOrder: (o: Order) => Promise<void>;
+  updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
+  orderHistory: OrderHistoryEntry[];
+  addOrderHistory: (orderId: string, action: OrderHistoryAction, description: string, changes?: Record<string, { from: string; to: string }>) => Promise<void>;
+  getOrderHistory: (orderId: string) => OrderHistoryEntry[];
+  getCustomer: (id: string) => Customer | undefined;
+  getProduct: (id: string) => Product | undefined;
+  getOrder: (id: string) => Order | undefined;
+  settings: ShopSettings;
+  updateSettings: (s: ShopSettings) => Promise<void>;
+  categories: string[];
+  addCategory: (name: string) => Promise<void>;
+  updateCategory: (oldName: string, newName: string) => Promise<void>;
+  deleteCategory: (name: string) => Promise<void>;
+  readNotifications: Set<string>;
+  markNotificationRead: (key: string) => void;
+  markAllNotificationsRead: () => void;
+  unmarkNotificationRead: (key: string) => void;
+  hasMenuPermission: (menuKey: string) => boolean;
+  hasActionPermission: (menuKey: string, action: 'view' | 'edit' | 'delete') => boolean;
+  staffList: StaffMember[];
+  getStaffName: (id: string) => string | undefined;
+}
+
+const DataContext = createContext<DataContextType | null>(null);
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function loadNotifications(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const d = localStorage.getItem('pos_read_notifications');
+    return d ? new Set(JSON.parse(d)) : new Set();
+  } catch { return new Set(); }
+}
+
+async function apiFetch(path: string, options?: RequestInit) {
+  const res = await fetch(path, { credentials: 'include', ...options });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [settings, setSettings] = useState<ShopSettings>(DEFAULT_SETTINGS);
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
+  const [readNotifications, setReadNotifications] = useState<Set<string>>(loadNotifications);
+  const [userType, setUserType] = useState<'owner' | 'staff' | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffPermissions, setStaffPermissions] = useState<string[]>([]);
+  const [staffPermissionsObj, setStaffPermissionsObj] = useState<Record<string, string[]> | null>(null);
+  const [staffName, setStaffName] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+
+  const isLoggedIn = !!session.data?.user;
+  const loadedRef = useRef<string | null>(null);
+
+  // Load all data when user logs in
+  useEffect(() => {
+    if (session.isPending) return;
+    const userId = session.data?.user?.id;
+    if (!userId) {
+      setUserType(null);
+      setStaffId(null);
+      setStaffPermissions([]);
+      setStaffList([]);
+      setCustomers([]);
+      setProducts([]);
+      setOrders([]);
+      setOrderHistory([]);
+      setSettings(DEFAULT_SETTINGS);
+      setCategories(DEFAULT_CATEGORIES);
+      setAuthLoading(false);
+      loadedRef.current = null;
+      return;
+    }
+    if (loadedRef.current === userId) {
+      setAuthLoading(false);
+      return;
+    }
+    loadedRef.current = userId;
+    setDataLoading(true);
+
+    Promise.all([
+      apiFetch('/api/staff-permissions'),
+      apiFetch('/api/customers'),
+      apiFetch('/api/products'),
+      apiFetch('/api/orders'),
+      apiFetch('/api/order-history'),
+      apiFetch('/api/settings'),
+      apiFetch('/api/categories'),
+    ]).then(([permsData, custData, prodData, ordData, histData, settData, catData]) => {
+      // Permissions
+      setUserType(permsData.userType || 'owner');
+      setStaffId(permsData.staffId || null);
+      setStaffName(permsData.staffName || null);
+      setStaffList(permsData.staffList || []);
+      const perms = permsData.permissions || {};
+      if (typeof perms === 'object' && !Array.isArray(perms)) {
+        setStaffPermissions(Object.keys(perms));
+        setStaffPermissionsObj(perms);
+      } else if (Array.isArray(perms)) {
+        setStaffPermissions(perms);
+        setStaffPermissionsObj(null);
+      }
+
+      // Data
+      setCustomers(custData.customers || []);
+
+      // Products: use defaults if empty
+      const prods = prodData.products || [];
+      if (prods.length === 0) {
+        seedDefaultProducts();
+        setProducts(DEFAULT_PRODUCTS);
+      } else {
+        setProducts(prods);
+      }
+
+      setOrders(ordData.orders || []);
+      setOrderHistory(histData.history || []);
+
+      if (settData.settings) {
+        setSettings(settData.settings);
+      }
+
+      // Categories: use defaults if empty
+      const cats = catData.categories || [];
+      if (cats.length === 0) {
+        seedDefaultCategories();
+        setCategories(DEFAULT_CATEGORIES);
+      } else {
+        setCategories(cats);
+      }
+    }).catch(err => {
+      console.error('Error loading data:', err);
+      setUserType('owner');
+    }).finally(() => {
+      setAuthLoading(false);
+      setDataLoading(false);
+    });
+  }, [session.data?.user?.id, session.isPending]);
+
+  async function seedDefaultProducts() {
+    for (const p of DEFAULT_PRODUCTS) {
+      try {
+        await apiFetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(p),
+        });
+      } catch {}
+    }
+  }
+
+  async function seedDefaultCategories() {
+    for (const name of DEFAULT_CATEGORIES) {
+      try {
+        await apiFetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+      } catch {}
+    }
+  }
+
+  // Persist notifications to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pos_read_notifications', JSON.stringify([...readNotifications]));
+    }
+  }, [readNotifications]);
+
+  const hasMenuPermission = useCallback((menuKey: string): boolean => {
+    if (userType === 'owner') return true;
+    if (userType === 'staff') return staffPermissions.includes(menuKey);
+    return true;
+  }, [userType, staffPermissions]);
+
+  const hasActionPermission = useCallback((menuKey: string, action: 'view' | 'edit' | 'delete'): boolean => {
+    if (userType === 'owner') return true;
+    if (userType === 'staff') {
+      if (staffPermissionsObj) {
+        const actions = staffPermissionsObj[menuKey];
+        return Array.isArray(actions) && actions.includes(action);
+      }
+      return staffPermissions.includes(menuKey);
+    }
+    return true;
+  }, [userType, staffPermissions, staffPermissionsObj]);
+
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
+    try {
+      const result = await signIn.email({ email, password });
+      if (result.error) return { success: false, error: result.error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, []);
+
+  const signupWithEmail = useCallback(async (email: string, password: string, fullName?: string) => {
+    try {
+      const result = await signUp.email({ email, password, name: fullName || '' });
+      if (result.error) return { success: false, error: result.error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await signOut();
+    setUserType(null);
+    setStaffId(null);
+    setStaffPermissions([]);
+    setStaffList([]);
+    setCustomers([]);
+    setProducts([]);
+    setOrders([]);
+    setOrderHistory([]);
+    setSettings(DEFAULT_SETTINGS);
+    setCategories(DEFAULT_CATEGORIES);
+    loadedRef.current = null;
+  }, []);
+
+  // Customers
+  const addCustomer = useCallback(async (c: Omit<Customer, 'id' | 'createdAt'>) => {
+    const id = genId();
+    const createdAt = new Date().toISOString();
+    const newC: Customer = { ...c, id, createdAt };
+    setCustomers(prev => [newC, ...prev]);
+    try {
+      const data = await apiFetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newC) });
+      return data.customer as Customer;
+    } catch {
+      setCustomers(prev => prev.filter(x => x.id !== id));
+      throw new Error('Failed to save customer');
+    }
+  }, []);
+
+  const updateCustomer = useCallback(async (c: Customer) => {
+    setCustomers(prev => prev.map(x => x.id === c.id ? c : x));
+    await apiFetch('/api/customers', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) });
+  }, []);
+
+  const deleteCustomer = useCallback(async (id: string) => {
+    setCustomers(prev => prev.filter(x => x.id !== id));
+    await apiFetch(`/api/customers?id=${id}`, { method: 'DELETE' });
+  }, []);
+
+  // Products
+  const addProduct = useCallback(async (p: Omit<Product, 'id'>) => {
+    const id = genId();
+    const newP: Product = { ...p, id };
+    setProducts(prev => [newP, ...prev]);
+    try {
+      const data = await apiFetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newP) });
+      return data.product as Product;
+    } catch {
+      setProducts(prev => prev.filter(x => x.id !== id));
+      throw new Error('Failed to save product');
+    }
+  }, []);
+
+  const updateProduct = useCallback(async (p: Product) => {
+    setProducts(prev => prev.map(x => x.id === p.id ? p : x));
+    await apiFetch('/api/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
+  }, []);
+
+  const deleteProduct = useCallback(async (id: string) => {
+    setProducts(prev => prev.filter(x => x.id !== id));
+    await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' });
+  }, []);
+
+  // Order history helper
+  const addOrderHistory = useCallback(async (orderId: string, action: OrderHistoryAction, description: string, changes?: Record<string, { from: string; to: string }>) => {
+    const performedBy = userType === 'staff' ? (staffName || 'Staff') : (userType === 'owner' ? 'Owner' : undefined);
+    const entry: OrderHistoryEntry = { id: genId(), orderId, action, description, performedBy, changes, timestamp: new Date().toISOString() };
+    setOrderHistory(prev => [entry, ...prev]);
+    try {
+      await apiFetch('/api/order-history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
+    } catch {}
+  }, [userType, staffName]);
+
+  const getOrderHistory = useCallback((orderId: string) => orderHistory.filter(h => h.orderId === orderId), [orderHistory]);
+
+  // Orders
+  const addOrder = useCallback(async (o: Omit<Order, 'id' | 'createdAt'>) => {
+    const id = genId();
+    const createdAt = new Date().toISOString();
+    const newO: Order = { ...o, id, createdAt };
+    setOrders(prev => [newO, ...prev]);
+    try {
+      const data = await apiFetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newO) });
+      await addOrderHistory(newO.id, 'created', 'অর্ডার তৈরি করা হয়েছে');
+      return data.order as Order;
+    } catch {
+      setOrders(prev => prev.filter(x => x.id !== id));
+      throw new Error('Failed to save order');
+    }
+  }, [addOrderHistory]);
+
+  const updateOrder = useCallback(async (o: Order) => {
+    setOrders(prev => prev.map(x => x.id === o.id ? o : x));
+    await apiFetch('/api/orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
+  }, []);
+
+  const updateOrderStatus = useCallback(async (id: string, status: OrderStatus) => {
+    const old = orders.find(x => x.id === id);
+    setOrders(prev => prev.map(x => x.id === id ? { ...x, status } : x));
+    if (old) {
+      await apiFetch('/api/orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...old, status }) });
+      await addOrderHistory(id, 'status_changed', 'স্ট্যাটাস পরিবর্তন', { status: { from: old.status, to: status } });
+    }
+  }, [orders, addOrderHistory]);
+
+  const deleteOrder = useCallback(async (id: string) => {
+    await addOrderHistory(id, 'deleted', 'অর্ডার মুছে ফেলা হয়েছে');
+    setOrders(prev => prev.filter(x => x.id !== id));
+    await apiFetch(`/api/orders?id=${id}`, { method: 'DELETE' });
+  }, [addOrderHistory]);
+
+  const getCustomer = useCallback((id: string) => customers.find(c => c.id === id), [customers]);
+  const getProduct = useCallback((id: string) => products.find(p => p.id === id), [products]);
+  const getOrder = useCallback((id: string) => orders.find(o => o.id === id), [orders]);
+
+  // Settings
+  const updateSettings = useCallback(async (s: ShopSettings) => {
+    setSettings(s);
+    await apiFetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) });
+  }, []);
+
+  // Categories
+  const addCategory = useCallback(async (name: string) => {
+    setCategories(prev => prev.includes(name) ? prev : [...prev, name]);
+    await apiFetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+  }, []);
+
+  const updateCategory = useCallback(async (oldName: string, newName: string) => {
+    setCategories(prev => prev.map(c => c === oldName ? newName : c));
+    await apiFetch('/api/categories', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldName, newName }) });
+  }, []);
+
+  const deleteCategory = useCallback(async (name: string) => {
+    setCategories(prev => prev.filter(c => c !== name));
+    await apiFetch(`/api/categories?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+  }, []);
+
+  // Notifications (stays in localStorage)
+  const markNotificationRead = useCallback((key: string) => {
+    setReadNotifications(prev => new Set([...prev, key]));
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setReadNotifications(new Set(['pending', 'due', 'ready']));
+  }, []);
+
+  const unmarkNotificationRead = useCallback((key: string) => {
+    setReadNotifications(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const getStaffName = useCallback((id: string) => staffList.find(s => s.id === id)?.name, [staffList]);
+
+  return (
+    <DataContext.Provider value={{
+      isLoggedIn, authLoading, dataLoading, userType, staffId, staffPermissions, hasMenuPermission, hasActionPermission,
+      loginWithEmail, signupWithEmail, logout,
+      customers, addCustomer, updateCustomer, deleteCustomer,
+      products, addProduct, updateProduct, deleteProduct,
+      orders, addOrder, updateOrder, updateOrderStatus, deleteOrder,
+      orderHistory, addOrderHistory, getOrderHistory,
+      getCustomer, getProduct, getOrder,
+      settings, updateSettings,
+      categories, addCategory, updateCategory, deleteCategory,
+      readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead,
+      staffList, getStaffName,
+    }}>
+      {children}
+    </DataContext.Provider>
+  );
+}
+
+export function useData() {
+  const ctx = useContext(DataContext);
+  if (!ctx) throw new Error('useData must be used within DataProvider');
+  return ctx;
+}

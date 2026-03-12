@@ -1,0 +1,1 @@
+CREATE POLICY "Staff can view shop staff" ON public.shop_staff FOR SELECT USING (is_shop_staff(auth.uid(), shop_id));

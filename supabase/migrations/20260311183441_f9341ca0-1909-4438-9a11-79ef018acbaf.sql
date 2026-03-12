@@ -1,0 +1,1 @@
+CREATE POLICY "Staff can view own record" ON public.shop_staff FOR SELECT USING (auth.uid() = user_id);

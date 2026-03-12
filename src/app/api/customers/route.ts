@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { getCloudDb } from '@/lib/cloud-db';
+import { getShopId, genId } from '@/lib/get-shop';
+import { getGlobalSupabase } from '@/lib/supabase';
+
+export async function GET(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const shopId = await getShopId(session.user.id);
+  if (!shopId) return NextResponse.json({ customers: [] });
+
+  const cloud = getCloudDb(shopId);
+  const { data, error } = await cloud.from('customers').select('*').eq('shop_id', shopId).order('created_at', { ascending: false });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const customers = (data || []).map((r: any) => ({ id: r.id, name: r.name, phone: r.phone, address: r.address, notes: r.notes, photo: r.photo, createdAt: r.created_at }));
+  return NextResponse.json({ customers });
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let shopId = await getShopId(session.user.id);
+  if (!shopId) {
+    const supabase = getGlobalSupabase()!;
+    const id = genId();
+    await supabase.from('shops').insert({ id, owner_id: session.user.id, name: 'My Shop', created_at: new Date().toISOString() });
+    shopId = id;
+  }
+  const { id, name, phone, address, notes, photo, createdAt } = await req.json();
+  const customerId = id || genId();
+  const created = createdAt || new Date().toISOString();
+
+  const cloud = getCloudDb(shopId);
+  const row = { id: customerId, shop_id: shopId, name, phone: phone || '', address: address || '', notes: notes || null, photo: photo || null, created_at: created };
+  const { data, error } = await cloud.from('customers').insert(row).select().single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ customer: { id: data.id, name: data.name, phone: data.phone, address: data.address, notes: data.notes, photo: data.photo, createdAt: data.created_at } });
+}
+
+export async function PATCH(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const shopId = await getShopId(session.user.id);
+  if (!shopId) return NextResponse.json({ error: 'No shop found' }, { status: 400 });
+  const { id, name, phone, address, notes, photo } = await req.json();
+
+  const cloud = getCloudDb(shopId);
+  const { data, error } = await cloud.from('customers').update({ name, phone: phone || '', address: address || '', notes: notes || null, photo: photo || null }).eq('id', id).select().single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ customer: { id: data.id, name: data.name, phone: data.phone, address: data.address, notes: data.notes, photo: data.photo, createdAt: data.created_at } });
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  const shopId = await getShopId(session.user.id);
+  if (!shopId) return NextResponse.json({ error: 'No shop found' }, { status: 400 });
+
+  const cloud = getCloudDb(shopId);
+  const { error } = await cloud.from('customers').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}

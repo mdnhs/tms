@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reduce motion */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+@layer base {
+  :root {
+    --background: 220 20% 96%;
+    --foreground: 222 30% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 30% 10%;
+    --primary: 170 65% 36%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 92%;
+    --secondary-foreground: 222 25% 15%;
+    --muted: 220 15% 91%;
+    --muted-foreground: 220 10% 48%;
+    --accent: 38 95% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 78% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 86%;
+    --input: 220 14% 86%;
+    --ring: 170 65% 36%;
+    --radius: 0.75rem;
+    --sidebar-background: 222 30% 9%;
+    --sidebar-foreground: 0 0% 93%;
+    --sidebar-primary: 170 65% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 25% 16%;
+    --sidebar-accent-foreground: 0 0% 93%;
+    --sidebar-border: 222 18% 20%;
+    --sidebar-ring: 170 65% 48%;
+    --success: 152 68% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 95% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222 28% 9%;
+    --foreground: 0 0% 93%;
+    --card: 222 25% 13%;
+    --card-foreground: 0 0% 93%;
+    --popover: 222 25% 13%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 170 65% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 18% 20%;
+    --secondary-foreground: 0 0% 87%;
+    --muted: 222 18% 20%;
+    --muted-foreground: 222 12% 58%;
+    --accent: 38 95% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 68% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 18% 22%;
+    --input: 222 18% 22%;
+    --ring: 170 65% 48%;
+    --sidebar-background: 222 30% 7%;
+    --sidebar-foreground: 0 0% 91%;
+    --sidebar-primary: 170 65% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 25% 14%;
+    --sidebar-accent-foreground: 0 0% 91%;
+    --sidebar-border: 222 18% 16%;
+    --sidebar-ring: 170 65% 48%;
+    --success: 152 68% 44%;
+    --warning: 38 95% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Noto Sans Bengali', 'Inter', sans-serif;
+    background-image: radial-gradient(ellipse at 80% 0%, hsl(var(--primary) / 0.06) 0%, transparent 55%),
+                      radial-gradient(ellipse at 0% 80%, hsl(var(--accent) / 0.04) 0%, transparent 50%);
+  }
+  .dark body {
+    background-image: radial-gradient(ellipse at 80% 0%, hsl(var(--primary) / 0.12) 0%, transparent 55%),
+                      radial-gradient(ellipse at 0% 80%, hsl(262 83% 55% / 0.06) 0%, transparent 50%);
+  }
+}
+
+/* Mobile app feel */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Vibrant glow utilities */
+.glow-primary {
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.35);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px hsl(var(--accent) / 0.35);
+}
+
+/* Glass morphism card */
+.glass {
+  background: hsl(var(--card) / 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--border) / 0.6);
+}
+
+/* Gradient border utility */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, hsl(var(--primary) / 0.12) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Sidebar gradient enhancement */
+.sidebar-glow {
+  background: linear-gradient(180deg,
+    hsl(var(--sidebar-accent)) 0%,
+    hsl(var(--sidebar-background)) 100%
+  );
+}
+
+@media print {
+  /* ── Hide all UI chrome ───────────────────────────────────────────── */
+  body, html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-image: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * { visibility: hidden !important; }
+
+  .print-area,
+  .print-area * { visibility: visible !important; }
+
+  .no-print { display: none !important; }
+
+  /* ── Multi-page: use absolute (not fixed) so content flows ───────── */
+  .print-area {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    page-break-inside: auto;
+  }
+
+  /* ── Avoid breaking inside key sections ─────────────────────────── */
+  .print-no-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ── Colors ─────────────────────────────────────────────────────── */
+  .print-area * { color: #111 !important; }
+  .print-area .text-muted-foreground,
+  .print-area .text-muted-foreground * { color: #555 !important; }
+  .print-area .text-primary,
+  .print-area .text-primary * { color: #1a6e50 !important; }
+  .print-area .text-destructive { color: #dc2626 !important; }
+  .print-area .text-emerald-600 { color: #059669 !important; }
+
+  /* ── Backgrounds ─────────────────────────────────────────────────── */
+  .print-area .bg-muted\/20,
+  .print-area .bg-muted\/10 { background: #f8f8f8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-area .bg-card { background: white !important; }
+  .print-area [class*="bg-primary"] { background: #e8f5f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-area [class*="bg-gradient-to-r"] { background: #1a6e50 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ── Borders ─────────────────────────────────────────────────────── */
+  .print-area .border-border,
+  .print-area [class*="border-border"] { border-color: #ddd !important; }
+  .print-area .border-t-2 { border-top-width: 2px !important; border-color: #ccc !important; }
+
+  /* ── Status badges ───────────────────────────────────────────────── */
+  .print-area [class*="bg-amber"] { background: #fef3c7 !important; color: #92400e !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-area [class*="bg-blue"]  { background: #dbeafe !important; color: #1e40af !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-area [class*="bg-emerald"] { background: #d1fae5 !important; color: #065f46 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ── Measurement cards ───────────────────────────────────────────── */
+  .print-area .bg-card.rounded-xl { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

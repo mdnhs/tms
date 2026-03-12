@@ -1,0 +1,1 @@
+ALTER TABLE public.shop_orders ADD COLUMN assigned_to uuid REFERENCES public.shop_staff(id) ON DELETE SET NULL;
