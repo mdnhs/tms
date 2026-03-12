@@ -37,7 +37,11 @@ export async function GET(req: NextRequest) {
 
   const cloud = getCloudDb(shopId);
   const [staffResult, rolesResult] = await Promise.all([
-    cloud.from('shop_staff').select('*').eq('shop_id', shopId).order('created_at', { ascending: true }),
+    cloud
+      .from('shop_staff')
+      .select('id, name, phone, role, role_id, user_id, is_active, salary_amount, shop_id, created_at')
+      .eq('shop_id', shopId)
+      .order('created_at', { ascending: true }),
     cloud.from('shop_roles').select('id, name, name_bn, permissions').eq('shop_id', shopId).order('created_at', { ascending: true }),
   ]);
 

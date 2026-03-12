@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "auth:setup": "node scripts/setup-better-auth-schema.mjs"
+    "auth:setup": "node scripts/setup-better-auth-schema.mjs",
+    "db:indexes": "node scripts/setup-supabase-performance-indexes.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

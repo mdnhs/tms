@@ -107,7 +107,11 @@ export async function GET(req: NextRequest) {
 
   const cloud = getCloudDb(shopId);
   const [ordersResult, customersResult, productsResult, staffResult, currentStaffResult] = await Promise.all([
-    cloud.from('orders').select('*').eq('shop_id', shopId).order('created_at', { ascending: false }),
+    cloud
+      .from('orders')
+      .select('id, customer_id, items, measurements, product_id, quantity, unit_price, total_price, advance_paid, due_amount, delivery_date, special_notes, status, assigned_to, created_at')
+      .eq('shop_id', shopId)
+      .order('created_at', { ascending: false }),
     cloud.from('customers').select('id, name, phone, address, notes, photo, created_at').eq('shop_id', shopId),
     cloud.from('products').select('id, name, name_bn, category, base_price, image, measurement_fields').eq('shop_id', shopId),
     cloud.from('shop_staff').select('id, name, phone, role, is_active').eq('shop_id', shopId).order('created_at', { ascending: true }),

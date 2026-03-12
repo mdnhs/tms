@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
   }
 
   const cloud = getCloudDb(shopId);
-  const [ordersResult, customersResult, productsResult] = await Promise.all([
+  const [ordersResult, customersResult] = await Promise.all([
     cloud
       .from('orders')
       .select('id, customer_id, total_price, advance_paid, due_amount, delivery_date, status, created_at, items')
@@ -79,13 +79,9 @@ export async function GET(req: NextRequest) {
       .from('customers')
       .select('id, name')
       .eq('shop_id', shopId),
-    cloud
-      .from('products')
-      .select('id, name, name_bn')
-      .eq('shop_id', shopId),
   ]);
 
-  const firstError = ordersResult.error || customersResult.error || productsResult.error;
+  const firstError = ordersResult.error || customersResult.error;
   if (firstError) {
     return NextResponse.json({ error: firstError.message }, { status: 500 });
   }
@@ -94,13 +90,6 @@ export async function GET(req: NextRequest) {
   const customerMap = new Map(
     ((customersResult.data || []) as CustomerRow[]).map((row) => [row.id, row.name]),
   );
-  const productMap = new Map(
-    ((productsResult.data || []) as ProductRow[]).map((row) => [
-      row.id,
-      row.name_bn || row.name,
-    ]),
-  );
-
   const today = new Date().toDateString();
   const threeDays = Date.now() + 3 * 86400000;
   const monthlyMap: Record<string, { revenue: number; orders: number }> = {};
@@ -114,6 +103,28 @@ export async function GET(req: NextRequest) {
   let totalDue = 0;
   let totalRevenue = 0;
   let totalCollected = 0;
+
+  const recentOrdersSource = orders.slice(0, 6);
+  const recentProductIds = [...new Set(
+    recentOrdersSource.flatMap((order) => parseItems(order.items).map((item) => item.productId).filter(Boolean)),
+  )] as string[];
+
+  const productMap = new Map<string, string>();
+  if (recentProductIds.length > 0) {
+    const productsResult = await cloud
+      .from('products')
+      .select('id, name, name_bn')
+      .eq('shop_id', shopId)
+      .in('id', recentProductIds);
+
+    if (productsResult.error) {
+      return NextResponse.json({ error: productsResult.error.message }, { status: 500 });
+    }
+
+    for (const row of (productsResult.data || []) as ProductRow[]) {
+      productMap.set(row.id, row.name_bn || row.name);
+    }
+  }
 
   const urgentOrders = orders
     .filter((order) => {
@@ -132,7 +143,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-  const recentOrders = orders.slice(0, 6).map((order) => {
+  const recentOrders = recentOrdersSource.map((order) => {
     const items = parseItems(order.items);
     const productNames = items
       .map((item) => (item.productId ? productMap.get(item.productId) : null))

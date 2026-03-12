@@ -18,7 +18,11 @@ export async function GET(req: NextRequest) {
   }
 
   const cloud = getCloudDb(shopId);
-  let query = cloud.from('shop_roles').select('*').eq('shop_id', shopId).order('created_at', { ascending: true });
+  let query = cloud
+    .from('shop_roles')
+    .select('id, shop_id, name, name_bn, permissions, created_at, updated_at')
+    .eq('shop_id', shopId)
+    .order('created_at', { ascending: true });
   if (id) {
     query = query.eq('id', id);
   }
