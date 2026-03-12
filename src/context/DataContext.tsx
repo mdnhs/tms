@@ -19,54 +19,6 @@ const DEFAULT_SETTINGS: ShopSettings = {
   smsBalanceThreshold: 50,
 };
 
-const DEFAULT_PRODUCTS: Product[] = [
-  {
-    id: 'p1', name: 'Shirt', nameBn: 'শার্ট', category: 'Upper', basePrice: 800,
-    measurementFields: [
-      { id: 'f1', name: 'Collar', nameBn: 'কলার' },
-      { id: 'f2', name: 'Chest', nameBn: 'বুক' },
-      { id: 'f3', name: 'Waist', nameBn: 'কোমর' },
-      { id: 'f4', name: 'Shoulder', nameBn: 'কাঁধ' },
-      { id: 'f5', name: 'Sleeve', nameBn: 'হাতা' },
-      { id: 'f6', name: 'Length', nameBn: 'লম্বা' },
-    ],
-  },
-  {
-    id: 'p2', name: 'Pant', nameBn: 'প্যান্ট', category: 'Lower', basePrice: 700,
-    measurementFields: [
-      { id: 'f7', name: 'Waist', nameBn: 'কোমর' },
-      { id: 'f8', name: 'Hip', nameBn: 'হিপ' },
-      { id: 'f9', name: 'Thigh', nameBn: 'উরু' },
-      { id: 'f10', name: 'Knee', nameBn: 'হাঁটু' },
-      { id: 'f11', name: 'Bottom', nameBn: 'মোহরা' },
-      { id: 'f12', name: 'Length', nameBn: 'লম্বা' },
-    ],
-  },
-  {
-    id: 'p3', name: 'Panjabi', nameBn: 'পাঞ্জাবি', category: 'Traditional', basePrice: 1200,
-    measurementFields: [
-      { id: 'f13', name: 'Chest', nameBn: 'বুক' },
-      { id: 'f14', name: 'Waist', nameBn: 'কোমর' },
-      { id: 'f15', name: 'Shoulder', nameBn: 'কাঁধ' },
-      { id: 'f16', name: 'Sleeve', nameBn: 'হাতা' },
-      { id: 'f17', name: 'Length', nameBn: 'লম্বা' },
-    ],
-  },
-  {
-    id: 'p4', name: 'Blazer', nameBn: 'ব্লেজার', category: 'Formal', basePrice: 3000,
-    measurementFields: [
-      { id: 'f18', name: 'Chest', nameBn: 'বুক' },
-      { id: 'f19', name: 'Waist', nameBn: 'কোমর' },
-      { id: 'f20', name: 'Shoulder', nameBn: 'কাঁধ' },
-      { id: 'f21', name: 'Sleeve', nameBn: 'হাতা' },
-      { id: 'f22', name: 'Length', nameBn: 'লম্বা' },
-      { id: 'f23', name: 'Back Width', nameBn: 'পিঠের প্রস্থ' },
-    ],
-  },
-];
-
-const DEFAULT_CATEGORIES = ['Upper', 'Lower', 'Traditional', 'Formal'];
-
 interface StaffMember {
   id: string;
   name: string;
@@ -118,6 +70,7 @@ interface DataContextType {
   hasActionPermission: (menuKey: string, action: 'view' | 'edit' | 'delete') => boolean;
   staffList: StaffMember[];
   getStaffName: (id: string) => string | undefined;
+  reloadData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -149,7 +102,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(DEFAULT_SETTINGS);
-  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categories, setCategories] = useState<string[]>([]);
   const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
   const [readNotifications, setReadNotifications] = useState<Set<string>>(loadNotifications);
   const [userType, setUserType] = useState<'owner' | 'staff' | null>(null);
@@ -161,6 +114,103 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const isLoggedIn = !!session.data?.user;
   const loadedRef = useRef<string | null>(null);
+
+  const loadUserData = useCallback(async (userId: string) => {
+    setDataLoading(true);
+
+    const results = await Promise.allSettled([
+      apiFetch('/api/staff-permissions'),
+      apiFetch('/api/customers'),
+      apiFetch('/api/products'),
+      apiFetch('/api/orders'),
+      apiFetch('/api/order-history'),
+      apiFetch('/api/settings'),
+      apiFetch('/api/categories'),
+    ]);
+
+    const [
+      permsResult,
+      customersResult,
+      productsResult,
+      ordersResult,
+      historyResult,
+      settingsResult,
+      categoriesResult,
+    ] = results;
+
+    if (permsResult.status === 'fulfilled') {
+      const permsData = permsResult.value;
+      setUserType(permsData.userType || 'owner');
+      setStaffId(permsData.staffId || null);
+      setStaffName(permsData.staffName || null);
+      setStaffList(permsData.staffList || []);
+      const perms = permsData.permissions || {};
+      if (typeof perms === 'object' && !Array.isArray(perms)) {
+        setStaffPermissions(Object.keys(perms));
+        setStaffPermissionsObj(perms);
+      } else if (Array.isArray(perms)) {
+        setStaffPermissions(perms);
+        setStaffPermissionsObj(null);
+      } else {
+        setStaffPermissions([]);
+        setStaffPermissionsObj(null);
+      }
+    } else {
+      console.error('Error loading staff permissions:', permsResult.reason);
+      setUserType('owner');
+      setStaffId(null);
+      setStaffName(null);
+      setStaffList([]);
+      setStaffPermissions([]);
+      setStaffPermissionsObj(null);
+    }
+
+    if (customersResult.status === 'fulfilled') {
+      setCustomers(customersResult.value.customers || []);
+    } else {
+      console.error('Error loading customers:', customersResult.reason);
+      setCustomers([]);
+    }
+
+    if (productsResult.status === 'fulfilled') {
+      setProducts(productsResult.value.products || []);
+    } else {
+      console.error('Error loading products:', productsResult.reason);
+      setProducts([]);
+    }
+
+    if (ordersResult.status === 'fulfilled') {
+      setOrders(ordersResult.value.orders || []);
+    } else {
+      console.error('Error loading orders:', ordersResult.reason);
+      setOrders([]);
+    }
+
+    if (historyResult.status === 'fulfilled') {
+      setOrderHistory(historyResult.value.history || []);
+    } else {
+      console.error('Error loading order history:', historyResult.reason);
+      setOrderHistory([]);
+    }
+
+    if (settingsResult.status === 'fulfilled' && settingsResult.value.settings) {
+      setSettings(settingsResult.value.settings);
+    } else if (settingsResult.status === 'rejected') {
+      console.error('Error loading settings:', settingsResult.reason);
+      setSettings(DEFAULT_SETTINGS);
+    }
+
+    if (categoriesResult.status === 'fulfilled') {
+      setCategories(categoriesResult.value.categories || []);
+    } else {
+      console.error('Error loading categories:', categoriesResult.reason);
+      setCategories([]);
+    }
+
+    loadedRef.current = userId;
+    setAuthLoading(false);
+    setDataLoading(false);
+  }, []);
 
   // Load all data when user logs in
   useEffect(() => {
@@ -176,7 +226,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setOrders([]);
       setOrderHistory([]);
       setSettings(DEFAULT_SETTINGS);
-      setCategories(DEFAULT_CATEGORIES);
+      setCategories([]);
       setAuthLoading(false);
       loadedRef.current = null;
       return;
@@ -185,91 +235,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setAuthLoading(false);
       return;
     }
-    loadedRef.current = userId;
-    setDataLoading(true);
-
-    Promise.all([
-      apiFetch('/api/staff-permissions'),
-      apiFetch('/api/customers'),
-      apiFetch('/api/products'),
-      apiFetch('/api/orders'),
-      apiFetch('/api/order-history'),
-      apiFetch('/api/settings'),
-      apiFetch('/api/categories'),
-    ]).then(([permsData, custData, prodData, ordData, histData, settData, catData]) => {
-      // Permissions
-      setUserType(permsData.userType || 'owner');
-      setStaffId(permsData.staffId || null);
-      setStaffName(permsData.staffName || null);
-      setStaffList(permsData.staffList || []);
-      const perms = permsData.permissions || {};
-      if (typeof perms === 'object' && !Array.isArray(perms)) {
-        setStaffPermissions(Object.keys(perms));
-        setStaffPermissionsObj(perms);
-      } else if (Array.isArray(perms)) {
-        setStaffPermissions(perms);
-        setStaffPermissionsObj(null);
-      }
-
-      // Data
-      setCustomers(custData.customers || []);
-
-      // Products: use defaults if empty
-      const prods = prodData.products || [];
-      if (prods.length === 0) {
-        seedDefaultProducts();
-        setProducts(DEFAULT_PRODUCTS);
-      } else {
-        setProducts(prods);
-      }
-
-      setOrders(ordData.orders || []);
-      setOrderHistory(histData.history || []);
-
-      if (settData.settings) {
-        setSettings(settData.settings);
-      }
-
-      // Categories: use defaults if empty
-      const cats = catData.categories || [];
-      if (cats.length === 0) {
-        seedDefaultCategories();
-        setCategories(DEFAULT_CATEGORIES);
-      } else {
-        setCategories(cats);
-      }
-    }).catch(err => {
-      console.error('Error loading data:', err);
-      setUserType('owner');
-    }).finally(() => {
-      setAuthLoading(false);
-      setDataLoading(false);
-    });
-  }, [session.data?.user?.id, session.isPending]);
-
-  async function seedDefaultProducts() {
-    for (const p of DEFAULT_PRODUCTS) {
-      try {
-        await apiFetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(p),
-        });
-      } catch {}
-    }
-  }
-
-  async function seedDefaultCategories() {
-    for (const name of DEFAULT_CATEGORIES) {
-      try {
-        await apiFetch('/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
-        });
-      } catch {}
-    }
-  }
+    void loadUserData(userId);
+  }, [loadUserData, session.data?.user?.id, session.isPending]);
 
   // Persist notifications to localStorage
   useEffect(() => {
@@ -327,7 +294,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setOrders([]);
     setOrderHistory([]);
     setSettings(DEFAULT_SETTINGS);
-    setCategories(DEFAULT_CATEGORIES);
+    setCategories([]);
     loadedRef.current = null;
   }, []);
 
@@ -486,6 +453,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       categories, addCategory, updateCategory, deleteCategory,
       readNotifications, markNotificationRead, markAllNotificationsRead, unmarkNotificationRead,
       staffList, getStaffName,
+      reloadData: async () => {
+        const userId = session.data?.user?.id;
+        if (!userId) return;
+        await loadUserData(userId);
+      },
     }}>
       {children}
     </DataContext.Provider>

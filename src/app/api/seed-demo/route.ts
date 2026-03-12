@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { genId } from '@/lib/get-shop';
+import { genId, getShopId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 
 const now = () => new Date().toISOString();
@@ -11,22 +11,13 @@ export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const supabase = getGlobalSupabase()!;
+  const supabase = getGlobalSupabase();
+  if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
 
-  // Ensure shop exists
-  const { data: existingShop } = await supabase
-    .from('shops')
-    .select('id')
-    .eq('owner_id', session.user.id)
-    .limit(1)
-    .single();
-
-  let shopId: string;
-  if (existingShop) {
-    shopId = existingShop.id;
-  } else {
+  // Reuse the owner's current shop when possible, even on older databases without a shops table.
+  let shopId = await getShopId(session.user.id);
+  if (!shopId) {
     shopId = genId();
-    await supabase.from('shops').insert({ id: shopId, owner_id: session.user.id, name: 'আমার টেইলার শপ', created_at: now() });
   }
 
   // ── Wipe existing data for this shop ──────────────────────────────────────

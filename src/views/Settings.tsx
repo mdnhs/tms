@@ -23,6 +23,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useSession, changeEmail, changePassword as authChangePassword } from "@/lib/auth-client";
 
 type Tab = 'shop' | 'invoice' | 'notifications' | 'appearance' | 'account' | 'data';
+const SEED_PROGRESS_STEPS = [
+  'Connecting to Supabase',
+  'Clearing old shop data',
+  'Creating demo catalog',
+  'Creating staff and customers',
+  'Creating demo orders',
+  'Finishing setup',
+] as const;
 
 const TABS: { key: Tab; icon: any; labelKey: string }[] = [
   { key: 'shop',          icon: Store,          labelKey: 'shopInfo' },
@@ -80,7 +88,7 @@ function ToggleRow({ label, desc, checked, onCheckedChange }: { label: string; d
 }
 
 export default function Settings() {
-  const { settings, updateSettings } = useData();
+  const { settings, updateSettings, reloadData } = useData();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme, colorTheme, setColorTheme, fontSize, setFontSize, borderRadius, setBorderRadius, density, setDensity, reduceMotion, setReduceMotion } = useTheme();
   const { toast } = useToast();
@@ -99,6 +107,7 @@ export default function Settings() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [seedLoading, setSeedLoading] = useState(false);
   const [seedConfirm, setSeedConfirm] = useState(false);
+  const [seedProgressStep, setSeedProgressStep] = useState(0);
   const [dataUnlocked, setDataUnlocked] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [clearScope, setClearScope] = useState<string | null>(null);
@@ -149,6 +158,19 @@ export default function Settings() {
   const [sbShowFields, setSbShowFields] = useState<Record<string, boolean>>({});
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+
+  useEffect(() => {
+    if (!seedLoading) {
+      setSeedProgressStep(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setSeedProgressStep((current) => Math.min(current + 1, SEED_PROGRESS_STEPS.length - 1));
+    }, 900);
+
+    return () => window.clearInterval(interval);
+  }, [seedLoading]);
   const pinErrorRef = useRef(false);
 
   const handlePinDigit = (digit: string) => {
@@ -251,13 +273,14 @@ export default function Settings() {
   };
 
   const handleSeedDemo = async () => {
-    setSeedLoading(true); setSeedConfirm(false);
+    setSeedLoading(true); setSeedConfirm(false); setSeedProgressStep(0);
     try {
       const res = await fetch('/api/seed-demo', { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Seed failed');
+      setSeedProgressStep(SEED_PROGRESS_STEPS.length - 1);
+      await reloadData();
       toast({ title: 'ডেমো ডেটা আমদানি সফল', description: `${data.summary.customers} customers, ${data.summary.orders} orders, ${data.summary.staff} staff` });
-      setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
       toast({ title: 'Import Failed', description: err.message, variant: 'destructive' });
     } finally { setSeedLoading(false); }
@@ -267,7 +290,10 @@ export default function Settings() {
     setExportLoading(true);
     try {
       const res = await fetch('/api/data-export', { credentials: 'include' });
-      if (!res.ok) throw new Error('Export failed');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Export failed');
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -930,284 +956,6 @@ export default function Settings() {
               </button>
             </div>
 
-            {/* ── Cloud Database (Supabase) ── */}
-            <SectionCard>
-              <SectionHeader icon={Cloud} title={t('cloudDatabase') || 'Cloud Database'} desc={t('cloudDatabaseDesc') || 'Connect to Supabase for cloud-synced data storage'} />
-              <div className="p-5 space-y-4">
-
-                {/* Connection status bar */}
-                <div className={`flex items-center gap-3 p-3 rounded-xl border ${
-                  sbUseCloud && sbConfigured
-                    ? 'bg-primary/5 border-primary/20'
-                    : 'bg-muted/30 border-border'
-                }`}>
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    sbUseCloud && sbConfigured ? 'bg-primary/15' : 'bg-muted'
-                  }`}>
-                    {sbUseCloud && sbConfigured
-                      ? <Cloud className="w-4 h-4 text-primary" />
-                      : <CloudOff className="w-4 h-4 text-muted-foreground" />
-                    }
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-foreground">
-                      {sbUseCloud && sbConfigured
-                        ? (t('cloudActive') || 'Cloud Database Active')
-                        : (t('usingLocalDb') || 'Using Cloud Database (Supabase)')}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {sbUseCloud && sbConfigured
-                        ? (t('cloudActiveDesc') || 'Data is synced to Supabase cloud')
-                        : (t('localDbDesc') || 'Data is stored locally on this server')}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={sbUseCloud}
-                    onCheckedChange={v => setSbUseCloud(v)}
-                    disabled={!sbConfigured}
-                  />
-                </div>
-
-                {/* Credential fields */}
-                <div className="space-y-3 p-4 bg-muted/20 rounded-xl border border-border">
-                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Key className="w-3.5 h-3.5 text-primary" />
-                    {t('supabaseCredentials') || 'Supabase Credentials'}
-                  </p>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Link2 className="w-3 h-3" /> {t('supabaseProjectUrl') || 'Project URL'}
-                    </Label>
-                    <Input
-                      value={sbUrl}
-                      onChange={e => setSbUrl(e.target.value)}
-                      placeholder="https://xxxxxxxxx.supabase.co"
-                      className="rounded-xl text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Key className="w-3 h-3" /> {t('supabaseProjectId') || 'Project ID'}
-                    </Label>
-                    <Input
-                      value={sbProjectId}
-                      onChange={e => setSbProjectId(e.target.value)}
-                      placeholder="xxxxxxxxxxxxxxxxx"
-                      className="rounded-xl text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Key className="w-3 h-3" /> {t('supabaseAnonKey') || 'Anon / Public Key'}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        type={sbShowFields.anonKey ? 'text' : 'password'}
-                        value={sbAnonKey}
-                        onChange={e => setSbAnonKey(e.target.value)}
-                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                        className="rounded-xl text-xs font-mono pr-9"
-                      />
-                      <button type="button" onClick={() => setSbShowFields(p => ({ ...p, anonKey: !p.anonKey }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                        {sbShowFields.anonKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                      <ShieldAlert className="w-3 h-3" /> {t('supabaseServiceKey') || 'Service Role Key'} <span className="text-[10px] text-muted-foreground/60">({t('requiredForMigration') || 'required for migration'})</span>
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        type={sbShowFields.serviceKey ? 'text' : 'password'}
-                        value={sbServiceKey}
-                        onChange={e => setSbServiceKey(e.target.value)}
-                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                        className="rounded-xl text-xs font-mono pr-9"
-                      />
-                      <button type="button" onClick={() => setSbShowFields(p => ({ ...p, serviceKey: !p.serviceKey }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                        {sbShowFields.serviceKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </div>
-
-
-                  {/* Save config button */}
-                  <Button
-                    onClick={handleSbSaveConfig}
-                    disabled={sbSaveLoading || !sbConfigured}
-                    size="sm"
-                    className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 shadow-sm shadow-primary/20 w-full"
-                  >
-                    {sbSaveLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                    {t('saveCredentials') || 'Save Credentials'}
-                  </Button>
-                </div>
-
-                {/* Action buttons row */}
-                {sbConfigured && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-
-                      {/* Test connection */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSbTestConnection}
-                        disabled={sbTestLoading}
-                        className="rounded-xl gap-1.5 text-xs h-10"
-                      >
-                        {sbTestLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Wifi className="w-3.5 h-3.5" />}
-                        {t('testConnection') || 'Test Connection'}
-                      </Button>
-
-                      {/* Setup tables */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSbSetupTables}
-                        disabled={sbSetupLoading}
-                        className="rounded-xl gap-1.5 text-xs h-10"
-                      >
-                        {sbSetupLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
-                        {t('setupTables') || 'Setup Tables / Get SQL'}
-                      </Button>
-
-                      {/* Migrate */}
-                      <Button
-                        size="sm"
-                        onClick={handleSbMigrate}
-                        disabled={sbMigrateLoading}
-                        className="rounded-xl gap-1.5 text-xs h-10 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:opacity-90 shadow-sm shadow-violet-400/25"
-                      >
-                        {sbMigrateLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Cloud className="w-3.5 h-3.5" />}
-                        {t('migrateToCloud') || 'Migrate to Cloud'}
-                      </Button>
-                    </div>
-
-                    {/* Test result */}
-                    {sbTestResult && (
-                      <div className={`flex items-start gap-2 p-3 rounded-xl border ${
-                        sbTestResult.connected
-                          ? 'bg-success/5 border-success/20'
-                          : 'bg-destructive/5 border-destructive/20'
-                      }`}>
-                        {sbTestResult.connected
-                          ? <Wifi className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                          : <WifiOff className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                        }
-                        <div>
-                          <p className={`text-xs font-semibold ${sbTestResult.connected ? 'text-success' : 'text-destructive'}`}>
-                            {sbTestResult.connected ? 'Connected' : 'Connection failed'}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{sbTestResult.message}</p>
-                          {sbTestResult.connected && !sbTestResult.tablesExist && (
-                            <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                              Tables not found — click &quot;Setup Tables&quot; to create them.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Setup result */}
-                    {sbSetupResult && (
-                      <div className={`p-3 rounded-xl border space-y-2 ${
-                        sbSetupResult.success
-                          ? 'bg-success/5 border-success/20'
-                          : 'bg-amber-500/5 border-amber-500/20'
-                      }`}>
-                        <div className="flex items-start gap-2">
-                          {sbSetupResult.success
-                            ? <Check className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={3} />
-                            : <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                          }
-                          <div>
-                            <p className={`text-xs font-semibold ${sbSetupResult.success ? 'text-success' : 'text-amber-600 dark:text-amber-400'}`}>
-                              {sbSetupResult.message}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* SQL fallback */}
-                        {sbSetupResult.sql && (
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2 p-2.5 bg-primary/5 border border-primary/15 rounded-lg">
-                              <ExternalLink className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                              <p className="text-[11px] text-foreground leading-relaxed">
-                                Open your <span className="font-bold">Supabase Dashboard → SQL Editor → New Query</span>, paste the SQL below, and click <span className="font-bold">Run</span>. Then come back and click <span className="font-bold">Migrate to Cloud</span>.
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => setSbShowSql(!sbShowSql)}
-                              className="text-[11px] text-primary font-semibold flex items-center gap-1"
-                            >
-                              {sbShowSql ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                              {sbShowSql ? 'Hide SQL' : 'Show SQL'}
-                            </button>
-                            {sbShowSql && (
-                              <div className="relative">
-                                <pre className="bg-slate-900 text-slate-100 text-[10px] p-3 rounded-xl overflow-auto max-h-60 leading-relaxed font-mono">
-                                  {sbSetupResult.sql}
-                                </pre>
-                                <button
-                                  onClick={() => { navigator.clipboard.writeText(sbSetupResult.sql!); toast({ title: 'SQL copied to clipboard' }); }}
-                                  className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-white transition-colors text-[10px] font-medium"
-                                >
-                                  <Copy className="w-3 h-3" /> Copy
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Migrate result */}
-                    {sbMigrateResult && (
-                      <div className={`p-3 rounded-xl border space-y-2 ${
-                        sbMigrateResult.success
-                          ? 'bg-success/5 border-success/20'
-                          : 'bg-destructive/5 border-destructive/20'
-                      }`}>
-                        <div className="flex items-start gap-2">
-                          {sbMigrateResult.success
-                            ? <Check className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={3} />
-                            : <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                          }
-                          <div>
-                            <p className={`text-xs font-semibold ${sbMigrateResult.success ? 'text-success' : 'text-destructive'}`}>
-                              {sbMigrateResult.success ? 'Migration complete' : 'Migration had errors'}
-                            </p>
-                            {sbMigrateResult.summary && (
-                              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                {Object.entries(sbMigrateResult.summary).map(([k, v]) => (
-                                  <span key={k} className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-lg text-[10px] font-medium text-foreground">
-                                    {v} <span className="text-muted-foreground">{k}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {sbMigrateResult.errors && sbMigrateResult.errors.length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                {sbMigrateResult.errors.map((e, i) => (
-                                  <p key={i} className="text-[10px] text-destructive">{e}</p>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </SectionCard>
-
             {/* ── Export Backup ── */}
             <SectionCard>
               <SectionHeader icon={Download} title={t('exportData') || 'Export Backup'} desc={t('exportDataDesc') || 'Download all your shop data as a JSON file'} />
@@ -1430,11 +1178,33 @@ export default function Settings() {
 
             {/* ── Import Demo Data ── */}
             <SectionCard>
-              <SectionHeader icon={Database} title="ডেমো ডেটা আমদানি / Import Demo Data" desc="Populate with realistic Bangladeshi demo data" />
+              <SectionHeader icon={Database} title="ডেমো ডেটা আমদানি / Import Demo Data" desc="Populate your Supabase database with realistic Bangladeshi demo data" />
               <div className="p-5 space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Fills your shop with products, categories, customers, orders, staff, and roles. Useful for testing and exploring features.
+                  Fills your Supabase shop database with products, categories, customers, orders, staff, and roles. Useful for testing and exploring features.
                 </p>
+                {seedLoading && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-primary animate-spin shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Importing demo data to Supabase</p>
+                        <p className="text-xs text-muted-foreground">{SEED_PROGRESS_STEPS[seedProgressStep]}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="h-2 rounded-full bg-primary/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500"
+                          style={{ width: `${((seedProgressStep + 1) / SEED_PROGRESS_STEPS.length) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Step {seedProgressStep + 1} of {SEED_PROGRESS_STEPS.length}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-start gap-2 p-3 bg-destructive/10 rounded-xl border border-destructive/20">
                   <ShieldAlert className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                   <p className="text-xs text-destructive font-medium">
