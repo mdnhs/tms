@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Customer, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, Order, Product } from '@/types';
-import { Printer, ArrowLeft, Download, User, Phone, MapPin, Calendar, Hash, CheckCircle2, Ruler } from 'lucide-react';
+import { Printer, ArrowLeft, Download, User, Phone, MapPin, Calendar, Hash, CheckCircle2, Ruler, Scissors } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type InvoiceMode = 'customer' | 'craftsman';
@@ -460,13 +460,15 @@ export default function InvoicePage() {
             {renderCraftsmanItems(false)}
           </CraftsmanSlip>
 
-          <div className="px-3.5 md:px-4 py-1.5 bg-slate-50 border-y border-dashed border-slate-400 text-center">
+          <div className="px-3.5 md:px-4 py-1.5 bg-slate-50 border-y border-dashed border-slate-400 text-center flex items-center justify-center gap-2">
+            <Scissors className="w-4 h-4 text-slate-500" />
             <p className="text-[11px] font-mono tracking-[0.18em] text-slate-500">- - - - - - - - - - - - - - - - - - - - - -</p>
+            <Scissors className="w-4 h-4 text-slate-500 transform scale-x-[-1]" />
           </div>
 
           <CraftsmanSlip
           compact
-          showShopHeader
+          showShopHeader={false}
           orderId={order.id}
           invoiceNo={invoiceNo}
           createdAt={order.createdAt}
