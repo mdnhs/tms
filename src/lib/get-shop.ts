@@ -1,5 +1,8 @@
 import { getGlobalSupabase } from './supabase';
 
+const SHOP_ID_CACHE_TTL_MS = 5 * 60 * 1000;
+const shopIdCache = new Map<string, { shopId: string | null; expiresAt: number }>();
+
 async function inferOwnerShopId(): Promise<string | null> {
   const supabase = getGlobalSupabase();
   if (!supabase) return null;
@@ -38,6 +41,11 @@ export async function getShopId(userId: string): Promise<string | null> {
   const supabase = getGlobalSupabase();
   if (!supabase) throw new Error('Supabase not configured');
 
+  const cached = shopIdCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.shopId;
+  }
+
   // Check if user owns a shop
   const { data: shop } = await supabase
     .from('shops')
@@ -45,7 +53,10 @@ export async function getShopId(userId: string): Promise<string | null> {
     .eq('owner_id', userId)
     .limit(1)
     .maybeSingle();
-  if (shop) return shop.id;
+  if (shop) {
+    shopIdCache.set(userId, { shopId: shop.id, expiresAt: Date.now() + SHOP_ID_CACHE_TTL_MS });
+    return shop.id;
+  }
 
   // Check if user is staff
   const { data: staff } = await supabase
@@ -55,10 +66,15 @@ export async function getShopId(userId: string): Promise<string | null> {
     .eq('is_active', true)
     .limit(1)
     .maybeSingle();
-  if (staff?.shop_id) return staff.shop_id;
+  if (staff?.shop_id) {
+    shopIdCache.set(userId, { shopId: staff.shop_id, expiresAt: Date.now() + SHOP_ID_CACHE_TTL_MS });
+    return staff.shop_id;
+  }
 
   // Fallback for older databases where business data exists but shops mapping is missing.
-  return inferOwnerShopId();
+  const inferredShopId = await inferOwnerShopId();
+  shopIdCache.set(userId, { shopId: inferredShopId, expiresAt: Date.now() + SHOP_ID_CACHE_TTL_MS });
+  return inferredShopId;
 }
 
 /**

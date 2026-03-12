@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useData } from "@/context/DataContext";
 import { useLanguage } from "@/context/LanguageContext";
-import { OrderItem, OrderMeasurement } from "@/types";
+import { Customer, Order, OrderItem, OrderMeasurement, Product } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,13 @@ interface DraftItem {
   unitPrice: number;
 }
 
+interface StaffOption {
+  id: string;
+  name: string;
+  role?: string;
+  isActive: boolean;
+}
+
 const PRODUCT_GRADIENTS = [
   "from-sky-400 to-blue-600",
   "from-violet-400 to-purple-600",
@@ -53,13 +60,8 @@ function productGradient(name: string) {
 
 export default function CreateOrder() {
   const {
-    customers,
-    products,
-    addCustomer,
-    addOrder,
     settings,
-    getCustomer: findCustomer,
-    staffList,
+    reloadData,
   } = useData();
   const { t } = useLanguage();
   const router = useRouter();
@@ -67,6 +69,11 @@ export default function CreateOrder() {
   const cur = settings.currency;
 
   const [step, setStep] = useState(1);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [staffList, setStaffList] = useState<StaffOption[]>([]);
 
   // Step 1
   const [customerId, setCustomerId] = useState("");
@@ -109,6 +116,59 @@ export default function CreateOrder() {
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [specialNotes]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCreateOrderData = async () => {
+      setPageLoading(true);
+      try {
+        const res = await fetch("/api/create-order-data", { credentials: "include" });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to load create order data");
+        }
+
+        if (cancelled) return;
+
+        setCustomers((data.customers || []) as Customer[]);
+        setProducts((data.products || []) as Product[]);
+        setStaffList(
+          Array.isArray(data.staff)
+            ? data.staff.map(
+                (staff: {
+                  id: string;
+                  name: string;
+                  role?: string;
+                  isActive: boolean;
+                }) => ({
+                  id: staff.id,
+                  name: staff.name,
+                  role: staff.role,
+                  isActive: Boolean(staff.isActive),
+                }),
+              )
+            : [],
+        );
+      } catch (err) {
+        if (!cancelled) {
+          toast({
+            title: t("error"),
+            description: err instanceof Error ? err.message : "Request failed",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        if (!cancelled) setPageLoading(false);
+      }
+    };
+
+    void loadCreateOrderData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t, toast]);
 
   const currentProduct = useMemo(
     () => products.find((p) => p.id === currentProductId),
@@ -172,7 +232,16 @@ export default function CreateOrder() {
     }
 
     try {
-      const c = await addCustomer({ ...newCustomer, phone: normalizedPhone });
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...newCustomer, phone: normalizedPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save customer");
+      const c = data.customer as Customer;
+      setCustomers((prev) => [c, ...prev]);
       setCustomerId(c.id);
       setShowAddCustomer(false);
       setNewCustomer({ name: "", phone: "", address: "", notes: "" });
@@ -192,7 +261,7 @@ export default function CreateOrder() {
     dueAmount: number;
     deliveryDate: string;
   }) => {
-    const customer = findCustomer(customerId);
+    const customer = customers.find((entry) => entry.id === customerId);
     if (!customer || !settings.enableSMS || !settings.smsApiKey) return;
     const productNames = items
       .map(
@@ -233,20 +302,52 @@ export default function CreateOrder() {
       ...item,
       totalPrice: item.unitPrice * item.quantity,
     }));
-    const order = await addOrder({
-      customerId,
-      items: orderItems,
-      totalPrice: subtotal,
-      advancePaid,
-      dueAmount: Math.max(0, dueAmount),
-      deliveryDate,
-      specialNotes,
-      status: "pending",
-      assignedTo: assignedTo || undefined,
-    });
-    toast({ title: t("orderCreated") });
-    sendSmsNotification(order);
-    router.push(`/invoice/${order.id}`);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          customerId,
+          items: orderItems,
+          totalPrice: subtotal,
+          advancePaid,
+          dueAmount: Math.max(0, dueAmount),
+          deliveryDate,
+          specialNotes,
+          status: "pending",
+          assignedTo: assignedTo || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save order");
+      const order = data.order as Order;
+
+      await fetch("/api/order-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          orderId: order.id,
+          action: "created",
+          description: "অর্ডার তৈরি করা হয়েছে",
+        }),
+      }).catch(() => undefined);
+
+      void reloadData();
+      toast({ title: t("orderCreated") });
+      void sendSmsNotification(order);
+      router.push(`/invoice/${order.id}`);
+    } catch (err) {
+      toast({
+        title: t("error"),
+        description: err instanceof Error ? err.message : "Request failed",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const STEPS = [
@@ -254,6 +355,26 @@ export default function CreateOrder() {
     { label: t("stepProduct"), icon: Package },
     { label: t("stepPayment"), icon: Wallet },
   ];
+
+  if (pageLoading) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4 animate-fade-in pb-8">
+        <div className="rounded-2xl border border-border bg-card p-5 animate-pulse">
+          <div className="h-7 w-40 rounded bg-muted" />
+          <div className="mt-2 h-4 w-56 rounded bg-muted" />
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5 animate-pulse">
+          <div className="h-4 w-28 rounded bg-muted" />
+          <div className="mt-4 h-10 w-full rounded-xl bg-muted" />
+          <div className="mt-3 space-y-2">
+            <div className="h-14 w-full rounded-xl bg-muted" />
+            <div className="h-14 w-full rounded-xl bg-muted" />
+            <div className="h-14 w-full rounded-xl bg-muted" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 animate-fade-in pb-8">
@@ -896,10 +1017,15 @@ export default function CreateOrder() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={items.length === 0}
+              disabled={items.length === 0 || submitting}
               className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 gap-1.5 font-semibold h-10"
             >
-              <Check className="w-4 h-4" /> {t("submitOrder")}
+              {submitting ? (
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}{" "}
+              {t("submitOrder")}
             </Button>
           </div>
         </div>

@@ -63,6 +63,8 @@ export async function GET(req: NextRequest) {
         urgentOrders: [],
         recentOrders: [],
       },
+    }, {
+      headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=20' },
     });
   }
 
@@ -212,5 +214,7 @@ export async function GET(req: NextRequest) {
       urgentOrders,
       recentOrders,
     },
+  }, {
+    headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=20' },
   });
 }
