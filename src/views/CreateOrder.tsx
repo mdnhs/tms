@@ -22,11 +22,14 @@ import {
   Calendar,
   FileText,
   UserCircle,
+  Scissors,
 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { useEnterNavigation } from "@/hooks/useEnterNavigation";
 import { normalizeBangladeshMobile } from "@/lib/bd-phone";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface DraftItem {
   productId: string;
@@ -57,6 +60,45 @@ function productGradient(name: string) {
   for (let i = 0; i < name.length; i++)
     h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
   return PRODUCT_GRADIENTS[Math.abs(h) % PRODUCT_GRADIENTS.length];
+}
+
+function ListSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div className="space-y-2.5">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border animate-pulse bg-card/50">
+          <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+            <Scissors className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-3 w-1/2 opacity-60" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GridSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 md:gap-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="p-3.5 md:p-4 rounded-xl border border-border animate-pulse bg-card/50 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+              <Scissors className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-2.5 w-2/3 opacity-60" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function CreateOrder() {
@@ -362,26 +404,6 @@ export default function CreateOrder() {
     { label: t("stepPayment"), icon: Wallet },
   ];
 
-  if (pageLoading) {
-    return (
-      <div className="max-w-2xl mx-auto space-y-4 animate-fade-in pb-8">
-        <div className="rounded-2xl border border-border bg-card p-5 animate-pulse">
-          <div className="h-7 w-40 rounded bg-muted" />
-          <div className="mt-2 h-4 w-56 rounded bg-muted" />
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 animate-pulse">
-          <div className="h-4 w-28 rounded bg-muted" />
-          <div className="mt-4 h-10 w-full rounded-xl bg-muted" />
-          <div className="mt-3 space-y-2">
-            <div className="h-14 w-full rounded-xl bg-muted" />
-            <div className="h-14 w-full rounded-xl bg-muted" />
-            <div className="h-14 w-full rounded-xl bg-muted" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-2xl mx-auto space-y-5 animate-fade-in pb-8">
       {/* Header */}
@@ -533,47 +555,50 @@ export default function CreateOrder() {
 
             {/* Customer list */}
             <div className="space-y-1.5 max-h-72 overflow-y-auto">
-              {filteredCustomers.length === 0 && (
+              {pageLoading ? (
+                <ListSkeleton />
+              ) : filteredCustomers.length === 0 ? (
                 <p className="text-center text-sm text-muted-foreground py-6">
                   {t("noCustomerFound")}
                 </p>
-              )}
-              {filteredCustomers.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    setCustomerId(c.id);
-                    setStep(2);
-                  }}
-                  className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all flex items-center gap-3 ${
-                    customerId === c.id
-                      ? "border-primary bg-primary/5 shadow-sm shadow-primary/10"
-                      : "border-border hover:border-primary/30 hover:bg-muted/30"
-                  }`}
-                >
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all ${
+              ) : (
+                filteredCustomers.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      setCustomerId(c.id);
+                      setStep(2);
+                    }}
+                    className={`w-full text-left px-3.5 py-3 rounded-xl border transition-all flex items-center gap-3 ${
                       customerId === c.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
+                        ? "border-primary bg-primary/5 shadow-sm shadow-primary/10"
+                        : "border-border hover:border-primary/30 hover:bg-muted/30"
                     }`}
                   >
-                    {c.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground truncate">
-                      {c.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {c.phone}
-                      {c.address ? ` · ${c.address}` : ""}
-                    </p>
-                  </div>
-                  {customerId === c.id && (
-                    <Check className="w-4 h-4 text-primary shrink-0" />
-                  )}
-                </button>
-              ))}
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 transition-all ${
+                        customerId === c.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {c.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-foreground truncate">
+                        {c.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {c.phone}
+                        {c.address ? ` · ${c.address}` : ""}
+                      </p>
+                    </div>
+                    {customerId === c.id && (
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -641,47 +666,51 @@ export default function CreateOrder() {
                     ? t("selectProduct")
                     : t("addAnotherProduct") || "আরেকটি পণ্য যোগ করুন"}
                 </h2>
-                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                  {products.map((p) => {
-                    const grad = productGradient(p.name);
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => pickProduct(p.id)}
-                        className="group text-left p-3.5 md:p-4 rounded-xl border border-border hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5 transition-all bg-card"
-                      >
-                        <div className="flex items-start gap-3 mb-2">
-                          <div
-                            className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 shadow-sm`}
-                          >
-                            <span className="text-sm font-bold text-white">
-                              {(p.nameBn || p.name).charAt(0)}
-                            </span>
+                {pageLoading ? (
+                  <GridSkeleton />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                    {products.map((p) => {
+                      const grad = productGradient(p.name);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => pickProduct(p.id)}
+                          className="group text-left p-3.5 md:p-4 rounded-xl border border-border hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5 transition-all bg-card"
+                        >
+                          <div className="flex items-start gap-3 mb-2">
+                            <div
+                              className={`w-9 h-9 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 shadow-sm`}
+                            >
+                              <span className="text-sm font-bold text-white">
+                                {(p.nameBn || p.name).charAt(0)}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-foreground leading-tight truncate">
+                                {p.nameBn}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                {p.category}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-semibold text-sm text-foreground leading-tight truncate">
-                              {p.nameBn}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground truncate">
-                              {p.category}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-primary font-bold text-sm">
-                          {cur}
-                          {p.basePrice.toLocaleString()}
-                        </p>
-                        {p.measurementFields.length > 0 && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <Ruler className="w-2.5 h-2.5" />
-                            {p.measurementFields.length}{" "}
-                            {t("measurementFields")}
+                          <p className="text-primary font-bold text-sm">
+                            {cur}
+                            {p.basePrice.toLocaleString()}
                           </p>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                          {p.measurementFields.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                              <Ruler className="w-2.5 h-2.5" />
+                              {p.measurementFields.length}{" "}
+                              {t("measurementFields")}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="flex items-center gap-2 pt-1">
                   <Button
                     variant="outline"

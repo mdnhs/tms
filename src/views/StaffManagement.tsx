@@ -5,7 +5,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Pencil, Trash2, Shield, UserPlus, KeyRound,
-  Phone, CheckCircle2, XCircle, Save, UserCog,
+  Phone, CheckCircle2, XCircle, Save, UserCog, Scissors,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Spinner } from '@/components/ui/spinner';
 import { normalizeBangladeshMobile } from '@/lib/bd-phone';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface StaffMember {
   id: string;
@@ -224,14 +225,6 @@ export default function StaffManagement() {
 
   const { page, setPage, pageData: pagedStaff, totalPages, totalItems, from, to } = usePagination(staff, 10);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5 animate-fade-in">
 
@@ -245,12 +238,24 @@ export default function StaffManagement() {
           <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{t('staffManagementDesc')}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {staff.length > 0 && (
-            <div className="text-right hidden sm:block">
-              <p className="text-xl font-bold text-foreground">{activeCount}<span className="text-muted-foreground text-sm font-normal">/{staff.length}</span></p>
-              <p className="text-xs text-muted-foreground">{t('active')}</p>
-            </div>
-          )}
+          <div className="text-right hidden sm:block">
+            {loading ? (
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1.5 animate-pulse">
+                  <div className="w-3 h-3 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <Scissors className="w-2 h-2 text-primary/40" />
+                  </div>
+                  <Skeleton className="h-5 w-10 bg-primary/10" />
+                </div>
+                <Skeleton className="h-3 w-8 opacity-40" />
+              </div>
+            ) : staff.length > 0 && (
+              <>
+                <p className="text-xl font-bold text-foreground">{activeCount}<span className="text-muted-foreground text-sm font-normal">/{staff.length}</span></p>
+                <p className="text-xs text-muted-foreground">{t('active')}</p>
+              </>
+            )}
+          </div>
           <Button
             onClick={openCreateDialog}
             className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90"
@@ -261,8 +266,29 @@ export default function StaffManagement() {
         </div>
       </div>
 
-      {/* Empty state */}
-      {staff.length === 0 ? (
+      {/* Main Content Area */}
+      {loading ? (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card/50 p-4 animate-pulse space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+                  <Scissors className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 space-y-2 py-1">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/2 opacity-60" />
+                </div>
+              </div>
+              <div className="pt-3 border-t border-border/60 flex justify-between items-center">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : staff.length === 0 ? (
+        /* Empty state */
         <div className="rounded-2xl border border-border bg-card">
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
@@ -362,7 +388,7 @@ export default function StaffManagement() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />
+      {!loading && <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />}
 
       {/* Add/Edit Staff Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

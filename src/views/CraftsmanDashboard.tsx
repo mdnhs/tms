@@ -5,8 +5,10 @@ import { Customer, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, Order, OrderStatus,
 import {
   Hammer, FileText, Calendar, Ruler,
   Clock, Wrench, CheckCircle2, AlertTriangle,
-  ChevronDown, ChevronUp, Package,
+  ChevronDown, ChevronUp, Package, Scissors,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useData } from '@/context/DataContext';
 
 /* ── helpers ─────────────────────────────────────────── */
 const AVATAR_COLORS = [
@@ -32,6 +34,17 @@ const STATUS_STYLES: Record<string, { bg: string; icon: StatusIconComponent; ico
   in_production: { bg: 'bg-primary/10 border-primary/20',  icon: Wrench,       iconColor: 'text-primary',  value: 'text-primary',  bar: 'bg-primary' },
   ready:         { bg: 'bg-success/10 border-success/20',  icon: CheckCircle2, iconColor: 'text-success',  value: 'text-success',  bar: 'bg-success' },
 };
+
+function ValueSkeleton() {
+  return (
+    <div className="flex items-center gap-1.5 animate-pulse">
+      <div className="w-3.5 h-3.5 rounded-full bg-current opacity-20 flex items-center justify-center shrink-0">
+        <Scissors className="w-2 h-2" />
+      </div>
+      <Skeleton className="h-5 w-12 bg-current opacity-20" />
+    </div>
+  );
+}
 
 /* ── component ───────────────────────────────────────── */
 export default function CraftsmanDashboard() {
@@ -110,19 +123,6 @@ export default function CraftsmanDashboard() {
 
   const total = assignedOrders.length;
 
-  if (loading) {
-    return (
-      <div className="space-y-5 animate-pulse">
-        <div className="h-10 w-56 rounded bg-muted" />
-        <div className="grid grid-cols-3 gap-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-28 rounded-2xl border border-border bg-card" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5 animate-fade-in">
 
@@ -135,7 +135,7 @@ export default function CraftsmanDashboard() {
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{t('craftsmanDashboardDesc')}</p>
         </div>
-        {total > 0 && (
+        {!loading && total > 0 && (
           <div className="shrink-0 text-right">
             <p className="text-2xl font-bold text-foreground">{total}</p>
             <p className="text-xs text-muted-foreground">{t('ordersCount')}</p>
@@ -154,13 +154,17 @@ export default function CraftsmanDashboard() {
             <div key={status} className={`rounded-2xl border ${s.bg} px-3 md:px-4 pt-3 pb-4`}>
               <div className="flex items-center justify-between mb-1">
                 <Icon className={`w-4 h-4 ${s.iconColor}`} />
-                <span className={`text-[10px] font-semibold ${s.value} opacity-70`}>{pct}%</span>
+                <div className={`text-[10px] font-semibold ${s.value} opacity-70`}>
+                  {loading ? <Skeleton className="h-3 w-6 bg-current opacity-20" /> : `${pct}%`}
+                </div>
               </div>
-              <p className={`text-2xl md:text-3xl font-bold ${s.value} leading-none mb-1`}>{count}</p>
+              <div className={`text-2xl md:text-3xl font-bold ${s.value} leading-none mb-1`}>
+                {loading ? <ValueSkeleton /> : count}
+              </div>
               <p className={`text-[10px] font-medium ${s.value} opacity-70 mb-2`}>{ORDER_STATUS_LABELS[status]}</p>
               {/* Mini progress bar */}
               <div className="h-1 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                <div className={`h-full rounded-full ${s.bar} transition-all`} style={{ width: `${pct}%` }} />
+                <div className={`h-full rounded-full ${s.bar} transition-all`} style={{ width: `${loading ? 0 : pct}%` }} />
               </div>
             </div>
           );
@@ -168,7 +172,7 @@ export default function CraftsmanDashboard() {
       </div>
 
       {/* ── Overdue alert ── */}
-      {overdueCount > 0 && (
+      {!loading && overdueCount > 0 && (
         <div className="flex items-center gap-3 bg-destructive/10 border border-destructive/25 rounded-2xl px-4 py-3">
           <div className="w-7 h-7 rounded-full bg-destructive/20 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
@@ -182,8 +186,30 @@ export default function CraftsmanDashboard() {
         </div>
       )}
 
-      {/* ── Empty state ── */}
-      {assignedOrders.length === 0 ? (
+      {/* ── Main content / Skeletons ── */}
+      {loading ? (
+        <div className="space-y-8">
+          {[1, 2].map(i => (
+            <div key={i} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+                  <Scissors className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-3 w-1/3 opacity-60" />
+                </div>
+              </div>
+              <div className="space-y-3 md:pl-13">
+                {[1, 2, 3].map(j => (
+                  <div key={j} className="h-32 rounded-2xl border border-border bg-card/50 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : assignedOrders.length === 0 ? (
+        /* Empty state */
         <div className="py-24 text-center text-muted-foreground">
           <div className="w-20 h-20 rounded-2xl bg-muted mx-auto flex items-center justify-center mb-4">
             <Hammer className="w-9 h-9 opacity-25" />

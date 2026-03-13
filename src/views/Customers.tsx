@@ -1,8 +1,9 @@
+'use client';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Customer } from '@/types';
-import { Plus, Search, Edit2, Trash2, X, Camera, Phone, MapPin, Users, ShoppingBag } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Camera, Phone, MapPin, Users, ShoppingBag, Scissors } from 'lucide-react';
 import { useEnterNavigation } from '@/hooks/useEnterNavigation';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
@@ -22,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AVATAR_GRADIENTS = [
   'from-sky-400 to-blue-600',
@@ -38,6 +40,51 @@ function avatarGradient(name: string) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
   return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
+}
+
+function MobileSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-card rounded-2xl border border-border p-3.5 animate-pulse shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+              <Scissors className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-1/2 opacity-60" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DesktopSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-card rounded-2xl border border-border p-4 animate-pulse shadow-sm space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+              <Scissors className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <Skeleton className="h-8 w-16 rounded-lg opacity-40" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/2 opacity-60" />
+          </div>
+          <div className="pt-3 border-t border-border flex justify-between">
+            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-4 w-10" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function Customers() {
@@ -187,20 +234,6 @@ export default function Customers() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-4 md:space-y-5 animate-pulse">
-        <div className="h-10 w-40 rounded bg-muted" />
-        <div className="h-10 w-full rounded-xl bg-muted" />
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="h-24 rounded-2xl border border-border bg-card" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
       {/* Header */}
@@ -210,7 +243,9 @@ export default function Customers() {
             <Users className="w-5 h-5 md:w-6 md:h-6 text-primary" />
             {t('customers')}
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{customers.length} {t('customersCount')}</p>
+          <div className="text-xs md:text-sm text-muted-foreground mt-0.5">
+            {loading ? <Skeleton className="h-4 w-20 inline-block" /> : customers.length} {t('customersCount')}
+          </div>
         </div>
         {hasActionPermission('customers', 'edit') && (
           <>
@@ -313,8 +348,18 @@ export default function Customers() {
         </div>
       )}
 
-      {/* Empty State */}
-      {filtered.length === 0 && (
+      {/* Main List Area */}
+      {loading ? (
+        <>
+          <div className="md:hidden">
+            <MobileSkeleton />
+          </div>
+          <div className="hidden md:block">
+            <DesktopSkeleton />
+          </div>
+        </>
+      ) : filtered.length === 0 ? (
+        /* Empty State */
         <div className="py-16 text-center text-muted-foreground">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center mb-3">
             <Users className="w-7 h-7 opacity-40" />
@@ -322,46 +367,90 @@ export default function Customers() {
           <p className="text-sm font-medium">{t('noCustomerFound')}</p>
           {search && <p className="text-xs mt-1">"{search}" — কোনো গ্রাহক পাওয়া যায়নি</p>}
         </div>
-      )}
-
-      {/* Mobile Card List */}
-      {filtered.length > 0 && (
-        <div className="md:hidden space-y-2">
-          {pagedCustomers.map(c => {
-            const stats = getStats(c.id);
-            const grad = avatarGradient(c.name);
-            return (
-              <div key={c.id} className="bg-card rounded-2xl border border-border p-3.5 shadow-sm active:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  {c.photo ? (
-                    <img src={c.photo} alt={c.name} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm" />
-                  ) : (
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm`}>
-                      {c.name.charAt(0)}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-foreground text-sm truncate">{c.name}</p>
-                      {stats.activeOrders > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium shrink-0">
-                          {stats.activeOrders} চলমান
+      ) : (
+        <>
+          {/* Mobile Card List */}
+          <div className="md:hidden space-y-2">
+            {pagedCustomers.map(c => {
+              const stats = getStats(c.id);
+              const grad = avatarGradient(c.name);
+              return (
+                <div key={c.id} className="bg-card rounded-2xl border border-border p-3.5 shadow-sm active:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    {c.photo ? (
+                      <img src={c.photo} alt={c.name} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm" />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm`}>
+                        {c.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground text-sm truncate">{c.name}</p>
+                        {stats.activeOrders > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium shrink-0">
+                            {stats.activeOrders} চলমান
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="w-3 h-3" />{c.phone}
                         </span>
-                      )}
+                        {c.address && (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground truncate max-w-[120px]">
+                            <MapPin className="w-3 h-3 shrink-0" />{c.address}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="w-3 h-3" />{c.phone}
-                      </span>
-                      {c.address && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground truncate max-w-[120px]">
-                          <MapPin className="w-3 h-3 shrink-0" />{c.address}
-                        </span>
-                      )}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1">
+                        {hasActionPermission('customers', 'edit') && (
+                          <button onClick={() => openEdit(c)} className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {hasActionPermission('customers', 'delete') && (
+                          <button onClick={() => setDeleteTarget(c)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <ShoppingBag className="w-3 h-3" />
+                        <span>{stats.orderCount}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="flex items-center gap-1">
+                  {stats.totalSpent > 0 && (
+                    <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">মোট খরচ</span>
+                      <span className="text-xs font-semibold text-foreground">{cur}{stats.totalSpent.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Card Grid */}
+          <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {pagedCustomers.map(c => {
+              const stats = getStats(c.id);
+              const grad = avatarGradient(c.name);
+              return (
+                <div key={c.id} className="bg-card rounded-2xl border border-border p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                  {/* Avatar + Actions */}
+                  <div className="flex items-start justify-between mb-3">
+                    {c.photo ? (
+                      <img src={c.photo} alt={c.name} className="w-14 h-14 rounded-2xl object-cover shadow-sm" />
+                    ) : (
+                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-xl font-bold text-white shadow-sm`}>
+                        {c.name.charAt(0)}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {hasActionPermission('customers', 'edit') && (
                         <button onClick={() => openEdit(c)} className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors">
                           <Edit2 className="w-3.5 h-3.5" />
@@ -373,97 +462,51 @@ export default function Customers() {
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <ShoppingBag className="w-3 h-3" />
-                      <span>{stats.orderCount}</span>
-                    </div>
                   </div>
-                </div>
-                {stats.totalSpent > 0 && (
-                  <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">মোট খরচ</span>
-                    <span className="text-xs font-semibold text-foreground">{cur}{stats.totalSpent.toLocaleString()}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Desktop Card Grid */}
-      {filtered.length > 0 && (
-        <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {pagedCustomers.map(c => {
-            const stats = getStats(c.id);
-            const grad = avatarGradient(c.name);
-            return (
-              <div key={c.id} className="bg-card rounded-2xl border border-border p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group">
-                {/* Avatar + Actions */}
-                <div className="flex items-start justify-between mb-3">
-                  {c.photo ? (
-                    <img src={c.photo} alt={c.name} className="w-14 h-14 rounded-2xl object-cover shadow-sm" />
-                  ) : (
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center text-xl font-bold text-white shadow-sm`}>
-                      {c.name.charAt(0)}
+                  {/* Info */}
+                  <div className="space-y-1 mb-3">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-foreground text-sm">{c.name}</p>
+                      {stats.activeOrders > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          {stats.activeOrders} চলমান
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {hasActionPermission('customers', 'edit') && (
-                      <button onClick={() => openEdit(c)} className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {hasActionPermission('customers', 'delete') && (
-                      <button onClick={() => setDeleteTarget(c)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Info */}
-                <div className="space-y-1 mb-3">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="font-semibold text-foreground text-sm">{c.name}</p>
-                    {stats.activeOrders > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                        {stats.activeOrders} চলমান
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Phone className="w-3 h-3 shrink-0" />
-                    <span>{c.phone}</span>
-                  </div>
-                  {c.address && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{c.address}</span>
+                      <Phone className="w-3 h-3 shrink-0" />
+                      <span>{c.phone}</span>
                     </div>
-                  )}
-                </div>
+                    {c.address && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{c.address}</span>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Stats row */}
-                <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-foreground">{stats.orderCount}</p>
-                    <p className="text-[10px] text-muted-foreground">{t('navOrders')}</p>
-                  </div>
-                  <div className="w-px h-6 bg-border" />
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-foreground">{cur}{stats.totalSpent.toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">মোট খরচ</p>
+                  {/* Stats row */}
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-foreground">{stats.orderCount}</p>
+                      <p className="text-[10px] text-muted-foreground">{t('navOrders')}</p>
+                    </div>
+                    <div className="w-px h-6 bg-border" />
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-foreground">{cur}{stats.totalSpent.toLocaleString()}</p>
+                      <p className="text-[10px] text-muted-foreground">মোট খরচ</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Pagination */}
-      <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />
+      {!loading && <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>

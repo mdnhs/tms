@@ -13,6 +13,8 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface DashboardMonthlyPoint {
   month: string;
@@ -112,33 +114,13 @@ function StatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
-function DashboardSkeleton() {
+function ValueSkeleton({ className }: { className?: string }) {
   return (
-    <div className="space-y-5 md:space-y-6 animate-pulse">
-      <div className="rounded-2xl border border-border bg-card p-5 md:p-7">
-        <div className="h-4 w-24 rounded bg-muted" />
-        <div className="mt-3 h-8 w-56 rounded bg-muted" />
-        <div className="mt-2 h-4 w-40 rounded bg-muted" />
+    <div className={cn("flex items-center gap-1.5 animate-pulse", className)}>
+      <div className="w-3.5 h-3.5 rounded-full bg-current opacity-20 flex items-center justify-center shrink-0">
+        <Scissors className="w-2 h-2" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="rounded-2xl border border-border bg-card p-4 md:p-5">
-            <div className="h-9 w-9 rounded-xl bg-muted" />
-            <div className="mt-4 h-7 w-20 rounded bg-muted" />
-            <div className="mt-2 h-3 w-24 rounded bg-muted" />
-          </div>
-        ))}
-      </div>
-      <div className="grid md:grid-cols-5 gap-3 md:gap-4">
-        <div className="md:col-span-3 h-72 rounded-2xl border border-border bg-card" />
-        <div className="md:col-span-2 h-72 rounded-2xl border border-border bg-card" />
-      </div>
-      <div className="grid md:grid-cols-3 gap-3 md:gap-4">
-        <div className="h-64 rounded-2xl border border-border bg-card" />
-        <div className="h-64 rounded-2xl border border-border bg-card" />
-        <div className="h-64 rounded-2xl border border-border bg-card" />
-      </div>
-      <div className="h-80 rounded-2xl border border-border bg-card" />
+      <Skeleton className="h-4 w-12 bg-current opacity-20" />
     </div>
   );
 }
@@ -251,8 +233,6 @@ export default function Dashboard() {
     },
   ];
 
-  if (loading) return <DashboardSkeleton />;
-
   return (
     <div className="space-y-5 md:space-y-6 animate-fade-in">
       <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-card to-accent/5 border border-primary/20 p-5 md:p-7">
@@ -272,21 +252,31 @@ export default function Dashboard() {
             </p>
 
             <div className="flex flex-wrap gap-2 mt-4">
-              <div className="flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1.5 text-primary text-xs font-semibold">
-                <Zap className="w-3 h-3" />
-                {todayOrders} {language === 'bn' ? 'আজ' : 'today'}
-              </div>
-              {pendingOrders > 0 && (
-                <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1.5 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-                  <Clock className="w-3 h-3" />
-                  {pendingOrders} {language === 'bn' ? 'পেন্ডিং' : 'pending'}
-                </div>
-              )}
-              {readyOrders > 0 && (
-                <div className="flex items-center gap-1.5 bg-emerald-500/10 rounded-full px-3 py-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-                  <CheckCircle className="w-3 h-3" />
-                  {readyOrders} {language === 'bn' ? 'রেডি' : 'ready'}
-                </div>
+              {loading ? (
+                <>
+                  <Skeleton className="h-7 w-20 rounded-full bg-primary/10" />
+                  <Skeleton className="h-7 w-20 rounded-full bg-amber-500/10" />
+                  <Skeleton className="h-7 w-20 rounded-full bg-emerald-500/10" />
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1.5 text-primary text-xs font-semibold">
+                    <Zap className="w-3 h-3" />
+                    {todayOrders} {language === 'bn' ? 'আজ' : 'today'}
+                  </div>
+                  {pendingOrders > 0 && (
+                    <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1.5 text-amber-600 dark:text-amber-400 text-xs font-semibold">
+                      <Clock className="w-3 h-3" />
+                      {pendingOrders} {language === 'bn' ? 'পেন্ডিং' : 'pending'}
+                    </div>
+                  )}
+                  {readyOrders > 0 && (
+                    <div className="flex items-center gap-1.5 bg-emerald-500/10 rounded-full px-3 py-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                      <CheckCircle className="w-3 h-3" />
+                      {readyOrders} {language === 'bn' ? 'রেডি' : 'ready'}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -326,7 +316,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="mt-3 relative z-10">
-              <p className="text-xl md:text-2xl font-bold text-white leading-none">{card.value}</p>
+              <div className="text-xl md:text-2xl font-bold text-white leading-none">
+                {loading ? <ValueSkeleton className="text-white" /> : card.value}
+              </div>
               <p className="text-[11px] md:text-xs text-white/70 mt-1 font-medium">{card.label}</p>
             </div>
           </div>
@@ -342,10 +334,12 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-xl text-xs font-semibold">
               <TrendingUp className="w-3.5 h-3.5" />
-              {cur}{totalRevenue.toLocaleString()}
+              {loading ? <Skeleton className="h-3 w-12 bg-primary/20" /> : `${cur}${totalRevenue.toLocaleString()}`}
             </div>
           </div>
-          {summary.monthlyData.length > 0 ? (
+          {loading ? (
+            <Skeleton className="h-[170px] w-full rounded-xl bg-muted/50" />
+          ) : summary.monthlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={170}>
               <AreaChart data={summary.monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <defs>
@@ -375,9 +369,20 @@ export default function Dashboard() {
         <div className="md:col-span-2 bg-card border border-border rounded-2xl p-4 md:p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="font-semibold text-foreground text-sm md:text-base">{t('orderStatusBreakdown')}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{totalOrders} {language === 'bn' ? 'মোট' : 'total'}</p>
+            <div className="text-xs text-muted-foreground mt-0.5">{loading ? <Skeleton className="h-3 w-10 inline-block" /> : totalOrders} {language === 'bn' ? 'মোট' : 'total'}</div>
           </div>
-          {summary.statusData.length > 0 ? (
+          {loading ? (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <Skeleton className="h-[120px] w-[120px] rounded-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            </div>
+          ) : summary.statusData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={120}>
                 <PieChart>
@@ -420,11 +425,26 @@ export default function Dashboard() {
               <p className="text-sm font-semibold text-foreground">{language === 'bn' ? 'জরুরি ডেলিভারি' : 'Urgent Deliveries'}</p>
               <p className="text-[10px] text-muted-foreground">{language === 'bn' ? 'পরবর্তী ৩ দিনে' : 'Next 3 days'}</p>
             </div>
-            {summary.urgentOrders.length > 0 && (
+            {loading ? (
+              <Skeleton className="w-5 h-5 rounded-full" />
+            ) : summary.urgentOrders.length > 0 && (
               <span className="text-xs font-bold bg-rose-500 text-white w-5 h-5 rounded-full flex items-center justify-center">{summary.urgentOrders.length}</span>
             )}
           </div>
-          {summary.urgentOrders.length === 0 ? (
+          {loading ? (
+            <div className="divide-y divide-border/60">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                  <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-2 w-16" />
+                  </div>
+                  <Skeleton className="h-4 w-8 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : summary.urgentOrders.length === 0 ? (
             <div className="px-4 py-8 flex flex-col items-center gap-2 text-muted-foreground">
               <CheckCircle className="w-8 h-8 opacity-20 text-emerald-500" />
               <p className="text-xs">{language === 'bn' ? 'কোনো জরুরি অর্ডার নেই' : 'No urgent orders'}</p>
@@ -462,7 +482,20 @@ export default function Dashboard() {
               <p className="text-[10px] text-muted-foreground">{language === 'bn' ? 'সর্বোচ্চ রাজস্ব' : 'By revenue'}</p>
             </div>
           </div>
-          {summary.topCustomers.length === 0 ? (
+          {loading ? (
+            <div className="divide-y divide-border/60">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                  <Skeleton className="w-6 h-6 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-2 w-16" />
+                  </div>
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              ))}
+            </div>
+          ) : summary.topCustomers.length === 0 ? (
             <div className="px-4 py-8 flex flex-col items-center gap-2 text-muted-foreground">
               <Users className="w-8 h-8 opacity-20" />
               <p className="text-xs">{t('noData')}</p>
@@ -495,7 +528,9 @@ export default function Dashboard() {
             <h3 className="font-semibold text-foreground text-sm">{language === 'bn' ? 'মাসিক অর্ডার' : 'Orders / Month'}</h3>
             <p className="text-xs text-muted-foreground">{language === 'bn' ? 'গত ৭ মাস' : 'Last 7 months'}</p>
           </div>
-          {summary.monthlyData.length > 0 ? (
+          {loading ? (
+            <Skeleton className="h-[130px] w-full rounded-xl bg-muted/50" />
+          ) : summary.monthlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={130}>
               <BarChart data={summary.monthlyData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }} barSize={14}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -514,12 +549,14 @@ export default function Dashboard() {
           <div className="mt-3 pt-3 border-t border-border/60">
             <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="text-muted-foreground">{language === 'bn' ? 'সংগ্রহের হার' : 'Collection rate'}</span>
-              <span className="font-bold text-foreground">{totalRevenue > 0 ? Math.round((totalCollected / totalRevenue) * 100) : 0}%</span>
+              <div className="font-bold text-foreground">
+                {loading ? <Skeleton className="h-3 w-8" /> : `${totalRevenue > 0 ? Math.round((totalCollected / totalRevenue) * 100) : 0}%`}
+              </div>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-700"
-                style={{ width: `${totalRevenue > 0 ? Math.round((totalCollected / totalRevenue) * 100) : 0}%` }}
+                style={{ width: `${loading ? 0 : (totalRevenue > 0 ? Math.round((totalCollected / totalRevenue) * 100) : 0)}%` }}
               />
             </div>
           </div>
@@ -539,7 +576,25 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {summary.recentOrders.length === 0 ? (
+        {loading ? (
+          <div className="p-4 space-y-4">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <div className="flex justify-between">
+                    <Skeleton className="h-3 w-1/3" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : summary.recentOrders.length === 0 ? (
           <div className="px-5 py-12 flex flex-col items-center gap-3 text-muted-foreground">
             <ShoppingCart className="w-10 h-10 opacity-20" />
             <p className="text-sm">{t('noData')}</p>

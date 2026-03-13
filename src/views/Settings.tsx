@@ -13,7 +13,7 @@ import {
   Download, Trash2, RotateCw, Users, Package, ShoppingCart, UserCog,
   FileUp, FileCheck2, FileX2, ChevronDown, ChevronUp,
   Cloud, CloudOff, Wifi, WifiOff, Copy, ExternalLink, Key, Link2,
-  Eye, EyeOff,
+  Eye, EyeOff, Scissors,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,21 @@ import { useToast } from "@/hooks/use-toast";
 import { Spinner } from "@/components/ui/spinner";
 import { useSession, changeEmail, changePassword as authChangePassword } from "@/lib/auth-client";
 import { normalizeBangladeshMobile } from "@/lib/bd-phone";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 type Tab = 'shop' | 'invoice' | 'notifications' | 'appearance' | 'account' | 'data';
+
+function ValueSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-1.5 animate-pulse", className)}>
+      <div className="w-3 h-3 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+        <Scissors className="w-2 h-2 text-primary/40" />
+      </div>
+      <Skeleton className="h-4 w-12 bg-primary/10" />
+    </div>
+  );
+}
 const SEED_PROGRESS_STEPS = [
   'Connecting to Supabase',
   'Clearing old shop data',
@@ -90,7 +103,7 @@ function ToggleRow({ label, desc, checked, onCheckedChange }: { label: string; d
 }
 
 export default function Settings() {
-  const { settings, updateSettings, reloadData } = useData();
+  const { settings, updateSettings, reloadData, dataLoading } = useData();
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme, colorTheme, setColorTheme, fontSize, setFontSize, borderRadius, setBorderRadius, density, setDensity, reduceMotion, setReduceMotion } = useTheme();
   const { toast } = useToast();
@@ -491,7 +504,10 @@ export default function Settings() {
             <SettingsIcon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
             {t('settings')}
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{t('settingsDesc')}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-xs md:text-sm text-muted-foreground">{t('settingsDesc')}</p>
+            {dataLoading && <ValueSkeleton className="opacity-60" />}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" onClick={() => setForm({ ...settings })} className="rounded-xl gap-1.5 hidden sm:flex">

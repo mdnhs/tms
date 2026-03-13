@@ -1,7 +1,8 @@
+'use client';
 import { useState, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { Plus, Trash2, Tag, Edit2, Check, X, LayoutGrid } from 'lucide-react';
+import { Plus, Trash2, Tag, Edit2, Check, X, LayoutGrid, Scissors } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CAT_GRADIENTS = [
   { bg: 'from-sky-400/15 to-blue-500/10', icon: 'from-sky-400 to-blue-600', border: 'border-sky-200/60 dark:border-sky-900/40' },
@@ -156,20 +158,6 @@ export default function Categories() {
 
   const { page, setPage, pageData: pagedCategories, totalPages, totalItems, from, to } = usePagination(categories, 10);
 
-  if (loading) {
-    return (
-      <div className="space-y-4 md:space-y-5 animate-pulse">
-        <div className="h-10 w-40 rounded bg-muted" />
-        <div className="h-10 w-full max-w-md rounded-xl bg-muted" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="h-32 rounded-2xl border border-border bg-card" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
       {/* Header */}
@@ -178,7 +166,9 @@ export default function Categories() {
           <LayoutGrid className="w-5 h-5 md:w-6 md:h-6 text-primary" />
           {t('categories_menu')}
         </h1>
-        <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{categories.length} {t('categoriesCount')}</p>
+        <div className="text-xs md:text-sm text-muted-foreground mt-0.5">
+          {loading ? <Skeleton className="h-4 w-20 inline-block" /> : categories.length} {t('categoriesCount')}
+        </div>
       </div>
 
       {/* Add input */}
@@ -199,81 +189,94 @@ export default function Categories() {
         </Button>
       </div>
 
-      {/* Empty state */}
-      {categories.length === 0 && (
+      {/* Main Grid Area */}
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-2xl border border-border p-4 animate-pulse space-y-3 h-32">
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+                <Scissors className="w-4.5 h-4.5 text-muted-foreground" />
+              </div>
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-1/2 opacity-60" />
+            </div>
+          ))}
+        </div>
+      ) : categories.length === 0 ? (
+        /* Empty state */
         <div className="py-16 text-center text-muted-foreground">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center mb-3">
             <Tag className="w-7 h-7 opacity-40" />
           </div>
           <p className="text-sm font-medium">{t('noData')}</p>
         </div>
+      ) : (
+        /* Category Cards */
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-4">
+          {pagedCategories.map((cat, index) => {
+            const g = CAT_GRADIENTS[index % CAT_GRADIENTS.length];
+            const productCount = products.filter(p => p.category === cat).length;
+
+            return (
+              <div
+                key={cat}
+                className={`bg-gradient-to-br ${g.bg} rounded-2xl border ${g.border} p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group`}
+              >
+                {editingCat === cat ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCat(null); }}
+                      className="h-8 text-sm rounded-lg"
+                      autoFocus
+                    />
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={saveEdit}
+                        disabled={isEditing}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
+                      >
+                        {isEditing ? <Spinner className="animate-spin" /> : <><Check className="w-3.5 h-3.5" /> সংরক্ষণ</>}
+                      </button>
+                      <button
+                        onClick={() => setEditingCat(null)}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-xs font-medium transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" /> বাতিল
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${g.icon} flex items-center justify-center shadow-sm`}>
+                        <Tag className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => startEdit(cat)}
+                          className="p-1.5 bg-background/70 hover:bg-background rounded-lg transition-colors border border-border/40"
+                        >
+                          <Edit2 className="w-3 h-3 text-foreground" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(cat)}
+                          className="p-1.5 bg-background/70 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors border border-border/40"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="font-semibold text-foreground text-sm md:text-base leading-tight">{cat}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{productCount} {t('productsCount')}</p>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
-
-      {/* Category Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-4">
-        {pagedCategories.map((cat, index) => {
-          const g = CAT_GRADIENTS[index % CAT_GRADIENTS.length];
-          const productCount = products.filter(p => p.category === cat).length;
-
-          return (
-            <div
-              key={cat}
-              className={`bg-gradient-to-br ${g.bg} rounded-2xl border ${g.border} p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group`}
-            >
-              {editingCat === cat ? (
-                <div className="space-y-2">
-                  <Input
-                    value={editValue}
-                    onChange={e => setEditValue(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCat(null); }}
-                    className="h-8 text-sm rounded-lg"
-                    autoFocus
-                  />
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={saveEdit}
-                      disabled={isEditing}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
-                    >
-                      {isEditing ? <Spinner className="animate-spin" /> : <><Check className="w-3.5 h-3.5" /> সংরক্ষণ</>}
-                    </button>
-                    <button
-                      onClick={() => setEditingCat(null)}
-                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-xs font-medium transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" /> বাতিল
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${g.icon} flex items-center justify-center shadow-sm`}>
-                      <Tag className="w-4.5 h-4.5 text-white w-[18px] h-[18px]" />
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => startEdit(cat)}
-                        className="p-1.5 bg-background/70 hover:bg-background rounded-lg transition-colors border border-border/40"
-                      >
-                        <Edit2 className="w-3 h-3 text-foreground" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(cat)}
-                        className="p-1.5 bg-background/70 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors border border-border/40"
-                      >
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-foreground text-sm md:text-base leading-tight">{cat}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{productCount} {t('productsCount')}</p>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
 
       {/* Pagination */}
       <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />

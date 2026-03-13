@@ -1,3 +1,4 @@
+'use client';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -5,7 +6,7 @@ import { Product, MeasurementField } from '@/types';
 import { useEnterNavigation } from '@/hooks/useEnterNavigation';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
-import { Plus, Edit2, Trash2, X, Search, Ruler, Package, Tag, ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Search, Ruler, Package, Tag, ImageIcon, Scissors } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const CARD_GRADIENTS = [
   'from-sky-400/20 to-blue-500/10',
@@ -50,6 +52,30 @@ function cardGradient(name: string) {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
   const idx = Math.abs(h) % CARD_GRADIENTS.length;
   return { card: CARD_GRADIENTS[idx], icon: ICON_GRADIENTS[idx] };
+}
+
+function ProductSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-card rounded-2xl border border-border overflow-hidden animate-pulse shadow-sm">
+          <div className="h-28 md:h-36 bg-muted flex items-center justify-center opacity-60">
+            <Scissors className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <div className="p-3 md:p-4 space-y-3">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-1/2 opacity-60" />
+            </div>
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function Products() {
@@ -192,25 +218,6 @@ export default function Products() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-4 md:space-y-5 animate-pulse">
-        <div className="h-10 w-40 rounded bg-muted" />
-        <div className="h-10 w-full rounded-xl bg-muted" />
-        <div className="flex gap-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-8 w-24 rounded-xl bg-muted" />
-          ))}
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-40 rounded-2xl border border-border bg-card" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
       {/* Header */}
@@ -220,7 +227,9 @@ export default function Products() {
             <Package className="w-5 h-5 md:w-6 md:h-6 text-primary" />
             {t('products')}
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{products.length} {t('productsCount')}</p>
+          <div className="text-xs md:text-sm text-muted-foreground mt-0.5">
+            {loading ? <Skeleton className="h-4 w-20 inline-block" /> : products.length} {t('productsCount')}
+          </div>
         </div>
         {hasActionPermission('products', 'edit') && (
           <>
@@ -251,34 +260,42 @@ export default function Products() {
       </div>
 
       {/* Category filter tabs */}
-      {categories.length > 0 && (
+      {(loading || categories.length > 0) && (
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              activeCategory === 'all'
-                ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
-                : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
-            }`}
-          >
-            সব ({products.length})
-          </button>
-          {categories.map(cat => {
-            const count = products.filter(p => p.category === cat).length;
-            return (
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-24 rounded-xl shrink-0" />
+            ))
+          ) : (
+            <>
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => setActiveCategory('all')}
                 className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                  activeCategory === cat
+                  activeCategory === 'all'
                     ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
                     : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
                 }`}
               >
-                {cat} ({count})
+                সব ({products.length})
               </button>
-            );
-          })}
+              {categories.map(cat => {
+                const count = products.filter(p => p.category === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      activeCategory === cat
+                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
+                        : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
+                    }`}
+                  >
+                    {cat} ({count})
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 
@@ -394,8 +411,11 @@ export default function Products() {
         </div>
       )}
 
-      {/* Empty State */}
-      {filtered.length === 0 && (
+      {/* Main List Area */}
+      {loading ? (
+        <ProductSkeleton />
+      ) : filtered.length === 0 ? (
+        /* Empty State */
         <div className="py-16 text-center text-muted-foreground">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center mb-3">
             <Package className="w-7 h-7 opacity-40" />
@@ -403,97 +423,97 @@ export default function Products() {
           <p className="text-sm font-medium">{t('noData')}</p>
           {search && <p className="text-xs mt-1">"{search}" — কোনো পণ্য পাওয়া যায়নি</p>}
         </div>
-      )}
-
-      {/* Product Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-4">
-        {pagedProducts.map(p => {
-          const { card, icon } = cardGradient(p.name);
-          return (
-            <div key={p.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group">
-              {/* Image / Placeholder */}
-              {p.image ? (
-                <div className="relative h-28 md:h-36 overflow-hidden">
-                  <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                  {p.category && (
-                    <span className="absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/40 text-white backdrop-blur-sm">
-                      {p.category}
-                    </span>
-                  )}
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {hasActionPermission('products', 'edit') && (
-                      <button onClick={() => openEdit(p)} className="p-1.5 bg-white/90 hover:bg-white rounded-lg shadow-sm transition-colors">
-                        <Edit2 className="w-3 h-3 text-foreground" />
-                      </button>
-                    )}
-                    {hasActionPermission('products', 'delete') && (
-                      <button onClick={() => setDeleteTarget(p)} className="p-1.5 bg-white/90 hover:bg-red-50 rounded-lg shadow-sm transition-colors">
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className={`relative h-28 md:h-36 bg-gradient-to-br ${card} flex items-center justify-center`}>
-                  {p.category && (
-                    <span className="absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-background/60 text-foreground backdrop-blur-sm border border-border/50">
-                      {p.category}
-                    </span>
-                  )}
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${icon} flex items-center justify-center shadow-lg`}>
-                    <span className="text-2xl font-bold text-white">{(p.nameBn || p.name).charAt(0)}</span>
-                  </div>
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {hasActionPermission('products', 'edit') && (
-                      <button onClick={() => openEdit(p)} className="p-1.5 bg-background/80 hover:bg-background rounded-lg shadow-sm transition-colors border border-border/50">
-                        <Edit2 className="w-3 h-3 text-foreground" />
-                      </button>
-                    )}
-                    {hasActionPermission('products', 'delete') && (
-                      <button onClick={() => setDeleteTarget(p)} className="p-1.5 bg-background/80 hover:bg-red-50 rounded-lg shadow-sm transition-colors border border-border/50">
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Body */}
-              <div className="p-3 md:p-4">
-                <h3 className="font-semibold text-foreground font-bangla text-sm md:text-base leading-tight">{p.nameBn}</h3>
-                <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 mb-2">{p.name}</p>
-
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-base md:text-lg font-bold text-primary">{cur}{p.basePrice.toLocaleString()}</p>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Ruler className="w-3 h-3" />
-                    <span>{p.measurementFields.length}</span>
-                  </div>
-                </div>
-
-                {p.measurementFields.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {p.measurementFields.slice(0, 4).map(f => (
-                      <span key={f.id} className="text-[10px] bg-primary/8 text-primary px-1.5 py-0.5 rounded-md font-medium border border-primary/15">
-                        {f.nameBn || f.name}
-                      </span>
-                    ))}
-                    {p.measurementFields.length > 4 && (
-                      <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
-                        +{p.measurementFields.length - 4}
+      ) : (
+        /* Product Cards */
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 md:gap-4">
+          {pagedProducts.map(p => {
+            const { card, icon } = cardGradient(p.name);
+            return (
+              <div key={p.id} className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group">
+                {/* Image / Placeholder */}
+                {p.image ? (
+                  <div className="relative h-28 md:h-36 overflow-hidden">
+                    <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                    {p.category && (
+                      <span className="absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/40 text-white backdrop-blur-sm">
+                        {p.category}
                       </span>
                     )}
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {hasActionPermission('products', 'edit') && (
+                        <button onClick={() => openEdit(p)} className="p-1.5 bg-white/90 hover:bg-white rounded-lg shadow-sm transition-colors">
+                          <Edit2 className="w-3 h-3 text-foreground" />
+                        </button>
+                      )}
+                      {hasActionPermission('products', 'delete') && (
+                        <button onClick={() => setDeleteTarget(p)} className="p-1.5 bg-white/90 hover:bg-red-50 rounded-lg shadow-sm transition-colors">
+                          <Trash2 className="w-3 h-3 text-destructive" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`relative h-28 md:h-36 bg-gradient-to-br ${card} flex items-center justify-center`}>
+                    {p.category && (
+                      <span className="absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full bg-background/60 text-foreground backdrop-blur-sm border border-border/50">
+                        {p.category}
+                      </span>
+                    )}
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${icon} flex items-center justify-center shadow-lg`}>
+                      <span className="text-2xl font-bold text-white">{(p.nameBn || p.name).charAt(0)}</span>
+                    </div>
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {hasActionPermission('products', 'edit') && (
+                        <button onClick={() => openEdit(p)} className="p-1.5 bg-background/80 hover:bg-background rounded-lg shadow-sm transition-colors border border-border/50">
+                          <Edit2 className="w-3 h-3 text-foreground" />
+                        </button>
+                      )}
+                      {hasActionPermission('products', 'delete') && (
+                        <button onClick={() => setDeleteTarget(p)} className="p-1.5 bg-background/80 hover:bg-red-50 rounded-lg shadow-sm transition-colors border border-border/50">
+                          <Trash2 className="w-3 h-3 text-destructive" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
+
+                {/* Body */}
+                <div className="p-3 md:p-4">
+                  <h3 className="font-semibold text-foreground font-bangla text-sm md:text-base leading-tight">{p.nameBn}</h3>
+                  <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 mb-2">{p.name}</p>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-base md:text-lg font-bold text-primary">{cur}{p.basePrice.toLocaleString()}</p>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Ruler className="w-3 h-3" />
+                      <span>{p.measurementFields.length}</span>
+                    </div>
+                  </div>
+
+                  {p.measurementFields.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {p.measurementFields.slice(0, 4).map(f => (
+                        <span key={f.id} className="text-[10px] bg-primary/8 text-primary px-1.5 py-0.5 rounded-md font-medium border border-primary/15">
+                          {f.nameBn || f.name}
+                        </span>
+                      ))}
+                      {p.measurementFields.length > 4 && (
+                        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                          +{p.measurementFields.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Pagination */}
-      <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />
+      {!loading && <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>

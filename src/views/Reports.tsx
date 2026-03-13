@@ -1,3 +1,4 @@
+'use client';
 import { useMemo, useState, useEffect } from 'react';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
@@ -5,7 +6,7 @@ import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Customer, ORDER_STATUS_LABELS, Order, Product } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, FileText, List, Users, CalendarIcon, BarChart3, TrendingUp, Wallet, AlertCircle } from 'lucide-react';
+import { Download, FileText, List, Users, CalendarIcon, BarChart3, TrendingUp, Wallet, AlertCircle, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import html2pdf from 'html2pdf.js';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const STATUS_BADGE: Record<string, string> = {
   pending:       'bg-warning/15 text-warning border-warning/30',
@@ -41,7 +43,41 @@ function avatarGradient(name: string) {
 
 function nameInitials(name: string) {
   const parts = name.trim().split(' ');
-  return parts.length >= 2 ? parts[0][0] + parts[1][0] : name[0];
+  return parts.length >= 2 ? parts[0][0] + parts[1][0] : name.slice(0, 2);
+}
+
+function SummarySkeleton() {
+  return (
+    <div className="flex items-center gap-1.5 animate-pulse">
+      <div className="w-3.5 h-3.5 rounded-full bg-current opacity-20 flex items-center justify-center shrink-0">
+        <Scissors className="w-2 h-2" />
+      </div>
+      <Skeleton className="h-5 w-16 bg-current opacity-20" />
+    </div>
+  );
+}
+
+function TableSkeleton({ cols = 7 }: { cols?: number }) {
+  return (
+    <div className="bg-card">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-border/50 animate-pulse">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 opacity-60">
+            <Scissors className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-2.5 w-1/2 opacity-60" />
+          </div>
+          <div className="hidden md:flex gap-4">
+            {Array.from({ length: cols - 2 }).map((_, j) => (
+              <Skeleton key={j} className="h-4 w-16 bg-muted" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function Reports() {
@@ -70,6 +106,8 @@ export default function Reports() {
         setOrders(data.orders || []);
         setCustomers(data.customers || []);
         setProducts(data.products || []);
+      } catch (err) {
+        // Error handled in useEffect cleanup or locally if needed
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -166,23 +204,6 @@ export default function Reports() {
     { label: t('totalDue'), value: `${cur}${summary.totalDue.toLocaleString()}`, icon: AlertCircle, color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
   ];
 
-  if (loading) {
-    return (
-      <div className="space-y-4 md:space-y-5 animate-pulse">
-        <div className="h-10 w-40 rounded bg-muted" />
-        <div className="flex gap-2">
-          <div className="h-9 w-32 rounded-xl bg-muted" />
-          <div className="h-9 w-32 rounded-xl bg-muted" />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-24 rounded-2xl bg-card border border-border" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
 
@@ -196,10 +217,10 @@ export default function Reports() {
           <p className="text-muted-foreground text-xs md:text-sm mt-0.5">{t('reportsDesc')}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => exportCSV(activeTab as 'orders' | 'customers')} className="gap-1.5 text-xs rounded-xl">
+          <Button variant="outline" size="sm" onClick={() => exportCSV(activeTab as 'orders' | 'customers')} className="gap-1.5 text-xs rounded-xl" disabled={loading}>
             <Download className="h-3.5 w-3.5" /> CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={exportPDF} className="gap-1.5 text-xs rounded-xl">
+          <Button variant="outline" size="sm" onClick={exportPDF} className="gap-1.5 text-xs rounded-xl" disabled={loading}>
             <FileText className="h-3.5 w-3.5" /> PDF
           </Button>
         </div>
@@ -269,7 +290,9 @@ export default function Reports() {
               <p className="text-xs text-muted-foreground">{label}</p>
               <Icon className={`w-4 h-4 ${color}`} />
             </div>
-            <p className={`text-lg font-bold ${color}`}>{value}</p>
+            <div className={`text-lg font-bold ${color}`}>
+              {loading ? <SummarySkeleton /> : value}
+            </div>
           </div>
         ))}
       </div>
@@ -290,7 +313,9 @@ export default function Reports() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-2.5">
-            {filteredOrders.length === 0 ? (
+            {loading ? (
+              <TableSkeleton cols={2} />
+            ) : filteredOrders.length === 0 ? (
               <div className="py-16 text-center text-muted-foreground">
                 <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">{t('noData')}</p>
@@ -353,7 +378,9 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border">
-                  {filteredOrders.length === 0 ? (
+                  {loading ? (
+                    <tr><td colSpan={10} className="p-0"><TableSkeleton cols={10} /></td></tr>
+                  ) : filteredOrders.length === 0 ? (
                     <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">{t('noData')}</td></tr>
                   ) : pagedOrders.map((order, i) => {
                     const customer = getCustomer(order.customerId);
@@ -386,7 +413,7 @@ export default function Reports() {
                     );
                   })}
                 </tbody>
-                {filteredOrders.length > 0 && (
+                {!loading && filteredOrders.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-border bg-muted/40 font-semibold text-sm">
                       <td colSpan={4} className="px-4 py-3 text-right text-muted-foreground">{t('total')}</td>
@@ -409,7 +436,9 @@ export default function Reports() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-2.5">
-            {customerReport.length === 0 ? (
+            {loading ? (
+              <TableSkeleton cols={2} />
+            ) : customerReport.length === 0 ? (
               <div className="py-16 text-center text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">{t('noData')}</p>
@@ -465,7 +494,9 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border">
-                  {customerReport.length === 0 ? (
+                  {loading ? (
+                    <tr><td colSpan={7} className="p-0"><TableSkeleton cols={7} /></td></tr>
+                  ) : customerReport.length === 0 ? (
                     <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">{t('noData')}</td></tr>
                   ) : pagedCustomers.map((c, i) => {
                     const grad = avatarGradient(c.name);
@@ -495,7 +526,7 @@ export default function Reports() {
                     );
                   })}
                 </tbody>
-                {customerReport.length > 0 && (
+                {!loading && customerReport.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-border bg-muted/40 font-semibold text-sm">
                       <td colSpan={3} className="px-4 py-3 text-right text-muted-foreground">{t('total')}</td>

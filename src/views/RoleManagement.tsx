@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePagination } from '@/hooks/usePagination';
@@ -8,11 +9,12 @@ import {
   Shield, Plus, Pencil, Trash2,
   LayoutDashboard, Users, Package, Tag, ShoppingCart,
   ClipboardList, BarChart3, Settings, Hammer, FileText,
-  Eye, Edit3, Trash,
+  Eye, Edit3, Trash, Scissors,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type PermActions = 'view' | 'edit' | 'delete';
 type PermissionsMap = Record<string, PermActions[]>;
@@ -125,14 +127,6 @@ export default function RoleManagement() {
 
   const { page, setPage, pageData: pagedRoles, totalPages, totalItems, from, to } = usePagination(roles, 10);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5 animate-fade-in">
 
@@ -154,8 +148,32 @@ export default function RoleManagement() {
         </Button>
       </div>
 
-      {/* Empty state */}
-      {roles.length === 0 ? (
+      {/* Main Grid Area */}
+      {loading ? (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card/50 shadow-sm animate-pulse overflow-hidden space-y-4">
+              <div className="h-1 bg-muted w-full" />
+              <div className="p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 opacity-60">
+                    <Scissors className="w-4.5 h-4.5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 space-y-2 py-1">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/3 opacity-60" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6 opacity-60" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : roles.length === 0 ? (
+        /* Empty state */
         <div className="rounded-2xl border border-border bg-card">
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">

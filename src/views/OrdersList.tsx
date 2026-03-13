@@ -1,9 +1,10 @@
+'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { Customer, ORDER_STATUS_LABELS, OrderStatus, Order, OrderItem, Product, OrderHistoryEntry } from '@/types';
-import { Search, FileText, ChevronDown, Pencil, Banknote, Trash2, History, Clock, Edit3, CreditCard, PlusCircle, XCircle, ClipboardList, Plus, CalendarDays, Hammer } from 'lucide-react';
+import { ORDER_STATUS_LABELS, OrderStatus, Order, OrderItem, Product, OrderHistoryEntry, Customer } from '@/types';
+import { Search, FileText, ChevronDown, Pencil, Banknote, Trash2, History, Clock, Edit3, CreditCard, PlusCircle, XCircle, ClipboardList, Plus, CalendarDays, Hammer, Scissors } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -14,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type StaffMember = {
   id: string;
@@ -72,31 +74,6 @@ function avatarGradient(name?: string) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
-
-function OrdersListSkeleton() {
-  return (
-    <div className="space-y-4 md:space-y-5 animate-pulse">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-2">
-          <div className="h-8 w-40 rounded bg-muted" />
-          <div className="h-4 w-24 rounded bg-muted" />
-        </div>
-        <div className="h-10 w-28 rounded-xl bg-muted" />
-      </div>
-      <div className="h-10 w-full rounded-xl bg-muted" />
-      <div className="flex gap-1.5 overflow-hidden">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="h-8 w-20 rounded-full bg-muted shrink-0" />
-        ))}
-      </div>
-      <div className="space-y-2">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="h-28 rounded-2xl border border-border bg-card" />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export default function OrdersList() {
@@ -450,8 +427,6 @@ export default function OrdersList() {
     }
   };
 
-  if (loading) return <OrdersListSkeleton />;
-
   return (
     <div className="space-y-4 md:space-y-5 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
@@ -460,7 +435,9 @@ export default function OrdersList() {
             <ClipboardList className="w-5 h-5 md:w-6 md:h-6 text-primary" />
             {t('orders')}
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{visibleOrders.length} {t('ordersCount')}</p>
+          <div className="text-xs md:text-sm text-muted-foreground mt-0.5">
+            {loading ? <Skeleton className="h-4 w-20 inline-block" /> : visibleOrders.length} {t('ordersCount')}
+          </div>
         </div>
         <Link href="/create-order">
           <Button size="sm" className="shrink-0 rounded-xl bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90 transition-all gap-1.5">
@@ -489,31 +466,55 @@ export default function OrdersList() {
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-        {STATUSES.map(s => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap shrink-0 ${
-              statusFilter === s
-                ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25'
-                : 'bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
-            }`}
-          >
-            {s !== 'all' && statusFilter !== s && (
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s]?.dot}`} />
-            )}
-            {STATUS_LABELS[s]}
-            {s !== 'all' && (
-              <span className={`text-[10px] px-1 rounded-full ${statusFilter === s ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
-                {visibleOrders.filter(o => o.status === s).length}
-              </span>
-            )}
-          </button>
-        ))}
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-full shrink-0" />
+          ))
+        ) : (
+          STATUSES.map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap shrink-0 ${
+                statusFilter === s
+                  ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25'
+                  : 'bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              }`}
+            >
+              {s !== 'all' && statusFilter !== s && (
+                <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s]?.dot}`} />
+              )}
+              {STATUS_LABELS[s]}
+              {s !== 'all' && (
+                <span className={`text-[10px] px-1 rounded-full ${statusFilter === s ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                  {visibleOrders.filter(o => o.status === s).length}
+                </span>
+              )}
+            </button>
+          ))
+        )}
       </div>
 
       <div className="md:hidden space-y-2.5">
-        {filtered.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card animate-pulse overflow-hidden">
+              <div className="px-4 pt-3.5 pb-3 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0 opacity-60">
+                  <Scissors className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 space-y-2 py-1">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-1/2 opacity-60" />
+                </div>
+              </div>
+              <div className="px-4 pb-3 flex items-center justify-between border-t border-border/40 pt-3">
+                <Skeleton className="h-8 w-20 rounded-lg" />
+                <Skeleton className="h-8 w-24 rounded-lg" />
+              </div>
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
             <div className="w-14 h-14 rounded-full bg-muted mx-auto flex items-center justify-center mb-3">
               <ClipboardList className="w-6 h-6 opacity-40" />
@@ -639,7 +640,31 @@ export default function OrdersList() {
       </div>
 
       <div className="hidden md:block rounded-2xl border border-border overflow-hidden shadow-sm">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="bg-card">
+            <div className="h-12 border-b border-border bg-muted/20" />
+            <div className="p-0">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-border/50 animate-pulse">
+                  <Skeleton className="h-4 w-16 bg-muted" />
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 opacity-60">
+                      <Scissors className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <Skeleton className="h-4 w-32 bg-muted" />
+                  </div>
+                  <Skeleton className="h-4 w-40 bg-muted" />
+                  <Skeleton className="h-4 w-24 bg-muted" />
+                  <Skeleton className="h-6 w-20 rounded-full bg-muted opacity-60" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-8 w-8 rounded-lg bg-muted" />
+                    <Skeleton className="h-8 w-8 rounded-lg bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="bg-card px-5 py-16 text-center text-muted-foreground">
             <div className="w-14 h-14 rounded-full bg-muted mx-auto flex items-center justify-center mb-3">
               <ClipboardList className="w-6 h-6 opacity-40" />
@@ -788,7 +813,7 @@ export default function OrdersList() {
         )}
       </div>
 
-      <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />
+      {!loading && <Pagination page={page} totalPages={totalPages} totalItems={totalItems} from={from} to={to} onPageChange={setPage} />}
 
       <Dialog open={!!editOrder} onOpenChange={open => !open && setEditOrder(null)}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
