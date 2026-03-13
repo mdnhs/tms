@@ -5,6 +5,7 @@ import { Plus, Trash2, Tag, Edit2, Check, X, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Spinner } from '@/components/ui/spinner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,9 @@ export default function Categories() {
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +76,7 @@ export default function Categories() {
       return;
     }
     void (async () => {
+      setIsAdding(true);
       try {
         const res = await fetch('/api/categories', {
           method: 'POST',
@@ -87,6 +92,8 @@ export default function Categories() {
         toast({ title: t('categoryAdded') });
       } catch (err) {
         toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+      } finally {
+        setIsAdding(false);
       }
     })();
   };
@@ -104,6 +111,7 @@ export default function Categories() {
       return;
     }
     void (async () => {
+      setIsEditing(true);
       try {
         const res = await fetch('/api/categories', {
           method: 'PATCH',
@@ -120,6 +128,8 @@ export default function Categories() {
         toast({ title: t('categoryUpdated') });
       } catch (err) {
         toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+      } finally {
+        setIsEditing(false);
       }
     })();
   };
@@ -127,6 +137,7 @@ export default function Categories() {
   const confirmDelete = () => {
     if (!deleteTarget) return;
     void (async () => {
+      setIsDeleting(true);
       try {
         const res = await fetch(`/api/categories?name=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE', credentials: 'include' });
         const data = await res.json();
@@ -137,6 +148,8 @@ export default function Categories() {
         toast({ title: t('categoryDeleted') });
       } catch (err) {
         toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+      } finally {
+        setIsDeleting(false);
       }
     })();
   };
@@ -179,9 +192,10 @@ export default function Categories() {
         />
         <Button
           onClick={handleAdd}
+          disabled={isAdding}
           className="shrink-0 rounded-xl bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90 transition-all"
         >
-          <Plus className="w-4 h-4 mr-1.5" /> {t('add')}
+          {isAdding ? <Spinner className="animate-spin" /> : <><Plus className="w-4 h-4 mr-1.5" /> {t('add')}</>}
         </Button>
       </div>
 
@@ -218,9 +232,10 @@ export default function Categories() {
                   <div className="flex gap-1.5">
                     <button
                       onClick={saveEdit}
+                      disabled={isEditing}
                       className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors"
                     >
-                      <Check className="w-3.5 h-3.5" /> সংরক্ষণ
+                      {isEditing ? <Spinner className="animate-spin" /> : <><Check className="w-3.5 h-3.5" /> সংরক্ষণ</>}
                     </button>
                     <button
                       onClick={() => setEditingCat(null)}
@@ -273,8 +288,8 @@ export default function Categories() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {t('delete')}
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isDeleting}>
+              {isDeleting ? <Spinner className="animate-spin" /> : t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

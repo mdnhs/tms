@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -872,7 +873,7 @@ export default function OrdersList() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOrder(null)}>{t('cancel')}</Button>
             <Button onClick={() => void saveEdit()} disabled={savingEdit}>
-              {savingEdit ? '...' : t('save')}
+              {savingEdit ? <Spinner className="animate-spin" /> : t('save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -911,7 +912,7 @@ export default function OrdersList() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOrder(null)}>{t('cancel')}</Button>
             <Button onClick={() => void collectPayment()} disabled={savingPayment || !payAmount || Number(payAmount) <= 0 || Number(payAmount) > (payOrder?.dueAmount || 0)}>
-              {savingPayment ? '...' : t('collect')}
+              {savingPayment ? <Spinner className="animate-spin" /> : t('collect')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -982,7 +983,7 @@ export default function OrdersList() {
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deletingId === deleteTarget?.id}>
-              {deletingId === deleteTarget?.id ? '...' : t('delete')}
+              {deletingId === deleteTarget?.id ? <Spinner className="animate-spin" /> : t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

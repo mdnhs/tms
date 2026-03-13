@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { requestPasswordReset } from '@/lib/auth-client';
 import { Scissors, Mail, Lock, User } from 'lucide-react';
 import { useEnterNavigation } from '@/hooks/useEnterNavigation';
+import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -167,12 +168,15 @@ export default function Login() {
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {mode === 'forgot'
-              ? (loading ? t('sendingResetLink') : t('sendResetLink'))
-              : mode === 'signup'
-                ? (loading ? t('signingUp') : t('signup'))
-                : (loading ? t('loggingIn') : t('login'))
-            }
+            {loading ? (
+              <Spinner className="animate-spin" />
+            ) : mode === 'forgot' ? (
+              t('sendResetLink')
+            ) : mode === 'signup' ? (
+              t('signup')
+            ) : (
+              t('login')
+            )}
           </Button>
 
           <div className="text-center">

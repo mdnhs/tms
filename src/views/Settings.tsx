@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Spinner } from "@/components/ui/spinner";
 import { useSession, changeEmail, changePassword as authChangePassword } from "@/lib/auth-client";
 import { normalizeBangladeshMobile } from "@/lib/bd-phone";
 
@@ -445,6 +446,7 @@ export default function Settings() {
     } finally { setImportLoading(false); }
   };
 
+  const [saveLoading, setSaveLoading] = useState(false);
   const handleSave = async () => {
     const shopPhone = form.shopPhone.trim();
     const normalizedShopPhone = shopPhone ? normalizeBangladeshMobile(shopPhone) : '';
@@ -453,6 +455,7 @@ export default function Settings() {
       return;
     }
 
+    setSaveLoading(true);
     try {
       const nextForm = { ...form, shopPhone: normalizedShopPhone || '' };
       await updateSettings(nextForm);
@@ -464,8 +467,11 @@ export default function Settings() {
         description: err instanceof Error ? err.message : 'Request failed',
         variant: 'destructive',
       });
+    } finally {
+      setSaveLoading(false);
     }
   };
+
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -491,8 +497,8 @@ export default function Settings() {
           <Button variant="outline" onClick={() => setForm({ ...settings })} className="rounded-xl gap-1.5 hidden sm:flex">
             <RotateCcw className="w-4 h-4" /> {t('reset')}
           </Button>
-          <Button onClick={handleSave} className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90">
-            <Save className="w-4 h-4" />
+          <Button onClick={handleSave} disabled={saveLoading} className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90">
+            {saveLoading ? <Spinner className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span className="hidden sm:inline">{t('saveSettings')}</span>
           </Button>
         </div>
@@ -625,7 +631,7 @@ export default function Settings() {
                     <span className="text-sm font-medium text-foreground">{t('smsBalance')}</span>
                   </div>
                   <Button variant="outline" size="sm" onClick={checkSmsBalance} disabled={balanceLoading || !form.smsApiKey} className="rounded-xl gap-1.5 text-xs">
-                    <RefreshCw className={`w-3.5 h-3.5 ${balanceLoading ? 'animate-spin' : ''}`} />
+                    {balanceLoading ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                     {t('checkBalance')}
                   </Button>
                 </div>
@@ -866,7 +872,7 @@ export default function Settings() {
                 <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder={t('newEmailPlaceholder')} className="rounded-xl" />
               </div>
               <Button onClick={handleUpdateEmail} disabled={emailLoading || !newEmail.trim()} size="sm" className="rounded-xl gap-1.5">
-                {emailLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                {emailLoading ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                 {t('updateEmail')}
               </Button>
             </div>
@@ -894,7 +900,7 @@ export default function Settings() {
                 </p>
               )}
               <Button onClick={handleUpdatePassword} disabled={passwordLoading || !newPassword || !currentPassword} size="sm" className="rounded-xl gap-1.5">
-                {passwordLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+                {passwordLoading ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
                 {t('updatePassword')}
               </Button>
             </div>
@@ -982,7 +988,7 @@ export default function Settings() {
                   {t('exportDataInfo') || 'Exports customers, orders, products, categories, staff, roles, and settings into a single JSON file that you can keep as a backup.'}
                 </p>
                 <Button onClick={handleExport} disabled={exportLoading} className="rounded-xl gap-2 bg-gradient-to-r from-primary to-primary/80 shadow-sm shadow-primary/25">
-                  {exportLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {exportLoading ? <Spinner className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   {exportLoading ? (t('exporting') || 'Exporting…') : (t('downloadBackup') || 'Download Backup')}
                 </Button>
               </div>
@@ -1007,7 +1013,7 @@ export default function Settings() {
                     </p>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={handleResetSettings} disabled={resetSettingsLoading} className="rounded-xl gap-1.5 bg-warning text-warning-foreground hover:bg-warning/90">
-                        {resetSettingsLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />}
+                        {resetSettingsLoading ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />}
                         {resetSettingsLoading ? (t('resetting') || 'Resetting…') : (t('confirmReset') || 'Yes, Reset')}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setResetSettingsConfirm(false)} disabled={resetSettingsLoading} className="rounded-xl">
@@ -1044,7 +1050,7 @@ export default function Settings() {
                         <div className="flex items-center gap-1.5">
                           <span className="text-[11px] font-medium text-muted-foreground">{t('areYouSure') || 'Sure?'}</span>
                           <Button size="sm" variant="destructive" onClick={() => handleClearData(scope)} disabled={clearLoading} className="rounded-xl h-7 px-3 text-xs gap-1">
-                            {clearLoading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                            {clearLoading ? <Spinner className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                             {t('yes') || 'Yes'}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => setClearScope(null)} disabled={clearLoading} className="rounded-xl h-7 px-3 text-xs">
@@ -1186,7 +1192,7 @@ export default function Settings() {
                       disabled={importLoading || !Object.values(importOptions).some(Boolean)}
                       className="rounded-xl gap-2 bg-gradient-to-r from-primary to-primary/80 shadow-sm shadow-primary/25 w-full"
                     >
-                      {importLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+                      {importLoading ? <Spinner className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
                       {importLoading ? (t('importing') || 'Importing…') : (t('startImport') || 'Start Import')}
                     </Button>
                   </>
@@ -1238,7 +1244,7 @@ export default function Settings() {
                     <p className="text-sm font-semibold text-destructive">Are you sure? All existing data will be deleted.</p>
                     <div className="flex gap-2">
                       <Button size="sm" variant="destructive" onClick={handleSeedDemo} disabled={seedLoading} className="rounded-xl gap-1.5">
-                        {seedLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+                        {seedLoading ? <Spinner className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
                         {seedLoading ? 'Importing…' : 'Yes, Import Demo Data'}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setSeedConfirm(false)} disabled={seedLoading} className="rounded-xl">
@@ -1259,8 +1265,9 @@ export default function Settings() {
           <Button variant="outline" onClick={() => setForm({ ...settings })} className="rounded-xl gap-1.5 flex-1">
             <RotateCcw className="w-4 h-4" /> {t('reset')}
           </Button>
-          <Button onClick={handleSave} className="rounded-xl gap-1.5 flex-1 bg-gradient-to-r from-primary to-primary/80">
-            <Save className="w-4 h-4" /> {t('saveSettings')}
+          <Button onClick={handleSave} disabled={saveLoading} className="rounded-xl gap-1.5 flex-1 bg-gradient-to-r from-primary to-primary/80">
+            {saveLoading ? <Spinner className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {t('saveSettings')}
           </Button>
         </div>
       )}

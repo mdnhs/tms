@@ -11,6 +11,7 @@ import {
   Eye, Edit3, Trash,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type PermActions = 'view' | 'edit' | 'delete';
@@ -102,8 +103,11 @@ export default function RoleManagement() {
 
   useEffect(() => { fetchRoles(); }, [fetchRoles]);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/shop-roles?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
@@ -114,6 +118,8 @@ export default function RoleManagement() {
       setDeleteTarget(null);
     } catch (err: any) {
       toast({ title: t('error'), description: err.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -305,8 +311,8 @@ export default function RoleManagement() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {t('delete')}
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isDeleting}>
+              {isDeleting ? <Spinner className="animate-spin" /> : t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Spinner } from '@/components/ui/spinner';
 import { normalizeBangladeshMobile } from '@/lib/bd-phone';
 
 interface StaffMember {
@@ -164,8 +165,11 @@ export default function StaffManagement() {
     } finally { setSaving(false); }
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/shop-staff?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
@@ -176,6 +180,8 @@ export default function StaffManagement() {
       setDeleteTarget(null);
     } catch (err: any) {
       toast({ title: t('error'), description: err.message, variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -406,7 +412,7 @@ export default function StaffManagement() {
               className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
             >
               {saving
-                ? <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ? <Spinner className="w-4 h-4 animate-spin" />
                 : <Save className="w-4 h-4" />
               }
               {editingStaff ? t('update') : t('save')}
@@ -445,7 +451,7 @@ export default function StaffManagement() {
               className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
             >
               {credLoading
-                ? <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ? <Spinner className="w-4 h-4 animate-spin" />
                 : <KeyRound className="w-4 h-4" />
               }
               {t('createAccount')}
@@ -463,8 +469,8 @@ export default function StaffManagement() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {t('delete')}
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isDeleting}>
+              {isDeleting ? <Spinner className="animate-spin" /> : t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

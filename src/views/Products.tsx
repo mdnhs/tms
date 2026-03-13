@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Spinner } from '@/components/ui/spinner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,6 +122,8 @@ export default function Products() {
     setFields(f => f.map((field, idx) => idx === i ? { ...field, [key]: val } : field));
   const removeField = (i: number) => setFields(f => f.filter((_, idx) => idx !== i));
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.basePrice) return;
@@ -132,6 +135,7 @@ export default function Products() {
       image: form.image || undefined,
       measurementFields: fields.filter(f => f.name),
     };
+    setIsSubmitting(true);
     try {
       if (editing) {
         const res = await fetch('/api/products', {
@@ -163,11 +167,16 @@ export default function Products() {
       setShowForm(false);
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
       const res = await fetch(`/api/products?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
@@ -178,6 +187,8 @@ export default function Products() {
       setDeleteTarget(null);
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -375,8 +386,8 @@ export default function Products() {
 
             <div className="flex gap-2 pt-1">
               <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowForm(false)}>{t('cancel')}</Button>
-              <Button type="submit" className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/20">
-                {editing ? t('update') : t('save')}
+              <Button type="submit" className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/20" disabled={isSubmitting}>
+                {isSubmitting ? <Spinner className="animate-spin" /> : editing ? t('update') : t('save')}
               </Button>
             </div>
           </form>
@@ -498,8 +509,9 @@ export default function Products() {
             <AlertDialogAction
               onClick={() => void handleDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
             >
-              {t('delete')}
+              {isDeleting ? <Spinner className="animate-spin" /> : t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

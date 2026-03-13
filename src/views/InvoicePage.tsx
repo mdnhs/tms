@@ -614,7 +614,7 @@ export default function InvoicePage() {
         </div>
 
         {/* Measurements — craftsman mode */}
-        {mode === 'craftsman' && order.items.some(item => item.measurements.length > 0) && (
+        {mode === ('craftsman' as InvoiceMode) && order.items.some(item => item.measurements.length > 0) && (
           <div className="px-8 py-5 border-t border-border bg-muted/10">
             <p className="text-[10px] font-semibold text-muted-foreground font-bangla mb-3 flex items-center gap-1.5">
               <Ruler className="w-3 h-3" /> {t('stepMeasurement')}

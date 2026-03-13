@@ -10,6 +10,7 @@ import {
   ClipboardList, BarChart3, Settings, Hammer, FileText,
   Eye, Edit3, Trash, CheckSquare, Square,
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -190,7 +191,7 @@ export default function RoleForm({ roleId }: RoleFormProps) {
           className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90 shrink-0"
         >
           {saving
-            ? <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            ? <Spinner className="w-4 h-4 animate-spin" />
             : <Save className="w-4 h-4" />
           }
           {isEdit ? t('update') : t('save')}
@@ -349,7 +350,7 @@ export default function RoleForm({ roleId }: RoleFormProps) {
           className="rounded-xl gap-1.5 bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 hover:opacity-90"
         >
           {saving
-            ? <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            ? <Spinner className="w-4 h-4 animate-spin" />
             : <Save className="w-4 h-4" />
           }
           {isEdit ? t('update') : t('save')}

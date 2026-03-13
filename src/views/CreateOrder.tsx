@@ -23,6 +23,7 @@ import {
   FileText,
   UserCircle,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import { useEnterNavigation } from "@/hooks/useEnterNavigation";
 import { normalizeBangladeshMobile } from "@/lib/bd-phone";
@@ -223,6 +224,8 @@ export default function CreateOrder() {
   const removeItem = (idx: number) =>
     setItems((prev) => prev.filter((_, i) => i !== idx));
 
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+
   const handleAddCustomer = async () => {
     if (!newCustomer.name || !newCustomer.phone) return;
     const normalizedPhone = normalizeBangladeshMobile(newCustomer.phone);
@@ -231,6 +234,7 @@ export default function CreateOrder() {
       return;
     }
 
+    setIsAddingCustomer(true);
     try {
       const res = await fetch("/api/customers", {
         method: "POST",
@@ -252,6 +256,8 @@ export default function CreateOrder() {
         description: err instanceof Error ? err.message : "Request failed",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingCustomer(false);
     }
   };
 
@@ -515,9 +521,10 @@ export default function CreateOrder() {
                   <Button
                     size="sm"
                     onClick={handleAddCustomer}
+                    disabled={isAddingCustomer}
                     className="rounded-xl bg-gradient-to-r from-primary to-primary/80 flex-1"
                   >
-                    <Check className="w-3.5 h-3.5 mr-1.5" />{" "}
+                    {isAddingCustomer ? <Spinner className="animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
                     {t("saveAndSelect")}
                   </Button>
                 </div>
@@ -1021,7 +1028,7 @@ export default function CreateOrder() {
               className="flex-1 rounded-xl bg-gradient-to-r from-primary to-primary/80 shadow-md shadow-primary/25 gap-1.5 font-semibold h-10"
             >
               {submitting ? (
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                <Spinner className="w-4 h-4 animate-spin" />
               ) : (
                 <Check className="w-4 h-4" />
               )}{" "}
