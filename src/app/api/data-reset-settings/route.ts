@@ -3,6 +3,9 @@ import { auth } from '@/lib/auth';
 import { genId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 const DEFAULT_SETTINGS = {
   shopName: 'My Tailor Shop',
   shopNameBn: 'আমার টেইলার শপ',

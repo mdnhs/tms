@@ -4,6 +4,9 @@ import { getCloudDb } from '@/lib/cloud-db';
 import { getShopId, genId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ categories: [] });

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 /**
  * Migration route is no longer needed since SQLite has been removed.
  * All data now lives in Supabase directly.

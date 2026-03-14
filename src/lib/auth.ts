@@ -1,15 +1,24 @@
 import { betterAuth } from 'better-auth';
 import { sendEmail } from './mailer';
 
+// Singleton pool — reused across requests in the same serverless instance
+let _pool: any = null;
+
 function getDatabaseConfig() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL environment variable is required');
   }
-  const { Pool } = require('pg');
-  return new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-  });
+  if (!_pool) {
+    const { Pool } = require('pg');
+    _pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
+  return _pool;
 }
 
 export const auth = betterAuth({

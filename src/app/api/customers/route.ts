@@ -5,6 +5,9 @@ import { getShopId, genId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 import { BANGLADESH_MOBILE_ERROR, normalizeBangladeshMobile } from '@/lib/bd-phone';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 interface CustomerRow {
   id: string;
   name: string;

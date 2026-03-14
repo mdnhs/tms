@@ -3,6 +3,9 @@ import { auth } from '@/lib/auth';
 import { genId, getShopId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 const now = () => new Date().toISOString();
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 const daysFromNow = (d: number) => new Date(Date.now() + d * 86400000).toISOString().split('T')[0];

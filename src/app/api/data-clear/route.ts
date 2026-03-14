@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getGlobalSupabase } from '@/lib/supabase';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 // scope: 'orders' | 'customers' | 'products' | 'staff' | 'all'
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });

@@ -4,6 +4,9 @@ import { getCloudDb } from '@/lib/cloud-db';
 import { getShopId, genId } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 
+export const runtime = 'nodejs';
+export const preferredRegion = 'sin1';
+
 function parseOrder(row: any) {
   const items = typeof row.items === 'string' ? JSON.parse(row.items) : row.items;
 
