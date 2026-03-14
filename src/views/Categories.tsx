@@ -1,5 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Plus, Trash2, Tag, Edit2, Check, X, LayoutGrid, Scissors } from 'lucide-react';
@@ -33,12 +35,9 @@ const CAT_GRADIENTS = [
 ];
 
 export default function Categories() {
-  const { reloadData } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [products, setProducts] = useState<Array<{ category: string }>>([]);
+  const invalidate = useInvalidate();
   const [newCategory, setNewCategory] = useState('');
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -47,28 +46,15 @@ export default function Categories() {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/products-page-data', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load categories');
-        if (cancelled) return;
-        setCategories(data.categories || []);
-        setProducts(data.products || []);
-      } catch (err) {
-        if (!cancelled) {
-          toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void loadData();
-    return () => { cancelled = true; };
-  }, [t, toast]);
+  interface ProductsPageData {
+    categories: string[];
+    products: Array<{ category: string }>;
+  }
+  const { data: pageData, isLoading: loading } = useApiQuery<ProductsPageData>(
+    queryKeys.products, '/api/products-page-data'
+  );
+  const categories = pageData?.categories || [];
+  const products = pageData?.products || [];
 
   const handleAdd = () => {
     const name = newCategory.trim();
@@ -88,9 +74,9 @@ export default function Categories() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to add category');
-        setCategories(prev => [...prev, name]);
+
         setNewCategory('');
-        void reloadData();
+        invalidate('category');
         toast({ title: t('categoryAdded') });
       } catch (err) {
         toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -123,10 +109,9 @@ export default function Categories() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to update category');
-        setCategories(prev => prev.map(category => category === editingCat ? name : category));
-        setProducts(prev => prev.map(product => product.category === editingCat ? { ...product, category: name } : product));
+
         setEditingCat(null);
-        void reloadData();
+        invalidate('category');
         toast({ title: t('categoryUpdated') });
       } catch (err) {
         toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -144,9 +129,9 @@ export default function Categories() {
         const res = await fetch(`/api/categories?name=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE', credentials: 'include' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to delete category');
-        setCategories(prev => prev.filter(category => category !== deleteTarget));
+
         setDeleteTarget(null);
-        void reloadData();
+        invalidate('category');
         toast({ title: t('categoryDeleted') });
       } catch (err) {
         toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });

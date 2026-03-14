@@ -1,5 +1,7 @@
 'use client';
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Customer } from '@/types';
@@ -88,13 +90,11 @@ function DesktopSkeleton({ count = 8 }: { count?: number }) {
 }
 
 export default function Customers() {
-  const { hasActionPermission, settings, reloadData } = useData();
+  const { hasActionPermission, settings } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const invalidate = useInvalidate();
   const [search, setSearch] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [orders, setOrders] = useState<Array<{ id: string; customerId: string; totalPrice: number; status: string }>>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '', photo: '' });
@@ -103,28 +103,15 @@ export default function Customers() {
   useEnterNavigation(formRef);
   const cur = settings.currency;
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/customers-page-data', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load customers');
-        if (cancelled) return;
-        setCustomers(data.customers || []);
-        setOrders(data.orders || []);
-      } catch (err) {
-        if (!cancelled) {
-          toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void loadData();
-    return () => { cancelled = true; };
-  }, [t, toast]);
+  interface CustomersPageData {
+    customers: Customer[];
+    orders: Array<{ id: string; customerId: string; totalPrice: number; status: string }>;
+  }
+  const { data: pageData, isLoading: loading } = useApiQuery<CustomersPageData>(
+    queryKeys.customers, '/api/customers-page-data'
+  );
+  const customers = pageData?.customers || [];
+  const orders = pageData?.orders || [];
 
   const customerStats = useMemo(() => {
     return customers.map(c => {
@@ -187,7 +174,6 @@ export default function Customers() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to update customer');
-        setCustomers(prev => prev.map(customer => customer.id === editing.id ? data.customer : customer));
         toast({ title: t('customerUpdated') });
       } else {
         const res = await fetch('/api/customers', {
@@ -198,10 +184,9 @@ export default function Customers() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create customer');
-        setCustomers(prev => [data.customer, ...prev]);
         toast({ title: t('customerAdded') });
       }
-      void reloadData();
+      invalidate('customer');
       setShowForm(false);
     } catch (err) {
       toast({
@@ -223,8 +208,7 @@ export default function Customers() {
       const res = await fetch(`/api/customers?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete customer');
-      setCustomers(prev => prev.filter(customer => customer.id !== deleteTarget.id));
-      void reloadData();
+      invalidate('customer');
       toast({ title: t('customerDeleted') });
       setDeleteTarget(null);
     } catch (err) {

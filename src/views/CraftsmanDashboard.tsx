@@ -1,4 +1,6 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { useApiQuery } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { Customer, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, Order, OrderStatus, Product } from '@/types';
@@ -49,37 +51,25 @@ function ValueSkeleton() {
 /* ── component ───────────────────────────────────────── */
 export default function CraftsmanDashboard() {
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
-  const [userType, setUserType] = useState<'owner' | 'staff'>('owner');
-  const [staffId, setStaffId] = useState<string | null>(null);
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/orders-list-data', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load craftsman dashboard');
-        if (cancelled) return;
-        setOrders(data.orders || []);
-        setCustomers(data.customers || []);
-        setProducts(data.products || []);
-        setStaffList(data.staff || []);
-        setUserType(data.userType === 'staff' ? 'staff' : 'owner');
-        setStaffId(data.staffId || null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void loadData();
-    return () => { cancelled = true; };
-  }, []);
+  interface OrdersListData {
+    orders: Order[];
+    customers: Customer[];
+    products: Product[];
+    staff: Array<{ id: string; name: string }>;
+    userType: string;
+    staffId: string | null;
+  }
+  const { data: pageData, isLoading: loading } = useApiQuery<OrdersListData>(
+    queryKeys.orders, '/api/orders-list-data'
+  );
+  const orders = pageData?.orders || [];
+  const customers = pageData?.customers || [];
+  const products = pageData?.products || [];
+  const staffList = pageData?.staff || [];
+  const userType = pageData?.userType === 'staff' ? 'staff' as const : 'owner' as const;
+  const staffId = pageData?.staffId || null;
 
   const getStaffName = (id: string) => staffList.find(s => s.id === id)?.name || t('notAssigned');
   const getCustomer = (id: string) => customers.find(customer => customer.id === id);

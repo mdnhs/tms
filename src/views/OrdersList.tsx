@@ -1,6 +1,8 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { ORDER_STATUS_LABELS, OrderStatus, Order, OrderItem, Product, OrderHistoryEntry, Customer } from '@/types';
@@ -81,14 +83,27 @@ export default function OrdersList() {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [staffList, setStaffList] = useState<StaffMember[]>([]);
-  const [userType, setUserType] = useState<'owner' | 'staff'>('owner');
-  const [staffId, setStaffId] = useState<string | null>(null);
+  const invalidate = useInvalidate();
+
+  interface OrdersPageData {
+    orders: Order[];
+    customers: Customer[];
+    products: Product[];
+    staff: StaffMember[];
+    userType: string;
+    staffId: string | null;
+  }
+
+  const { data: pageData, isLoading: loading, error: queryError } = useApiQuery<OrdersPageData>(
+    queryKeys.orders, '/api/orders-list-data'
+  );
+  const orders = pageData?.orders || [];
+  const customers = pageData?.customers || [];
+  const products = pageData?.products || [];
+  const staffList = pageData?.staff || [];
+  const userType = pageData?.userType === 'staff' ? 'staff' as const : 'owner' as const;
+  const staffId = pageData?.staffId || null;
+  const error = queryError?.message || '';
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -114,38 +129,6 @@ export default function OrdersList() {
   const [historyEntries, setHistoryEntries] = useState<OrderHistoryEntry[]>([]);
 
   const STATUS_LABELS: Record<string, string> = { all: t('all'), pending: t('pending'), in_production: t('in_production'), ready: t('ready'), delivered: t('delivered'), cancelled: t('cancelled') };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadOrdersPage = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await fetch('/api/orders-list-data', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load orders');
-        if (cancelled) return;
-        setOrders((data.orders || []) as Order[]);
-        setCustomers((data.customers || []) as Customer[]);
-        setProducts((data.products || []) as Product[]);
-        setStaffList((data.staff || []) as StaffMember[]);
-        setUserType(data.userType === 'staff' ? 'staff' : 'owner');
-        setStaffId(data.staffId || null);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load orders');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void loadOrdersPage();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const getCustomer = (id: string) => customers.find((customer) => customer.id === id);
   const getProduct = (id: string) => products.find((product) => product.id === id);
@@ -222,7 +205,6 @@ export default function OrdersList() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update order');
 
-      setOrders((prev) => prev.map((order) => order.id === editOrder.id ? nextOrder : order));
 
       await fetch('/api/order-history', {
         method: 'POST',
@@ -237,7 +219,7 @@ export default function OrdersList() {
       }).catch(() => undefined);
 
       setEditOrder(null);
-      void reloadData();
+      invalidate('order');
       toast({ title: t('orderUpdated') });
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -273,7 +255,6 @@ export default function OrdersList() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to collect payment');
 
-      setOrders((prev) => prev.map((order) => order.id === payOrder.id ? nextOrder : order));
 
       await fetch('/api/order-history', {
         method: 'POST',
@@ -291,7 +272,7 @@ export default function OrdersList() {
       }).catch(() => undefined);
 
       setPayOrder(null);
-      void reloadData();
+      invalidate('order');
       toast({ title: `৳${amount.toLocaleString('bn-BD')} ${t('paymentCollected')}` });
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -313,7 +294,6 @@ export default function OrdersList() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update status');
 
-      setOrders((prev) => prev.map((entry) => entry.id === order.id ? nextOrder : entry));
 
       await fetch('/api/order-history', {
         method: 'POST',
@@ -327,7 +307,7 @@ export default function OrdersList() {
         }),
       }).catch(() => undefined);
 
-      void reloadData();
+      invalidate('order');
       toast({ title: t('statusUpdatedFull') });
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -352,7 +332,6 @@ export default function OrdersList() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update assignee');
 
-      setOrders((prev) => prev.map((entry) => entry.id === order.id ? nextOrder : entry));
 
       await fetch('/api/order-history', {
         method: 'POST',
@@ -371,7 +350,7 @@ export default function OrdersList() {
         }),
       }).catch(() => undefined);
 
-      void reloadData();
+      invalidate('order');
       toast({ title: t('orderUpdated') });
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -388,7 +367,6 @@ export default function OrdersList() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete order');
 
-      setOrders((prev) => prev.filter((order) => order.id !== deleteTarget.id));
 
       await fetch('/api/order-history', {
         method: 'POST',
@@ -402,7 +380,7 @@ export default function OrdersList() {
       }).catch(() => undefined);
 
       setDeleteTarget(null);
-      void reloadData();
+      invalidate('order');
       toast({ title: t('orderDeleted'), variant: 'destructive' });
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });

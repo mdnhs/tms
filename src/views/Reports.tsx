@@ -1,5 +1,7 @@
 'use client';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import { useApiQuery } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { useData } from '@/context/DataContext';
@@ -83,10 +85,6 @@ function TableSkeleton({ cols = 7 }: { cols?: number }) {
 export default function Reports() {
   const { settings } = useData();
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [period, setPeriod] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, setActiveTab] = useState('orders');
@@ -94,27 +92,17 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const cur = settings.currency;
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/orders-list-data', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load reports');
-        if (cancelled) return;
-        setOrders(data.orders || []);
-        setCustomers(data.customers || []);
-        setProducts(data.products || []);
-      } catch (err) {
-        // Error handled in useEffect cleanup or locally if needed
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void loadData();
-    return () => { cancelled = true; };
-  }, []);
+  interface OrdersListData {
+    orders: Order[];
+    customers: Customer[];
+    products: Product[];
+  }
+  const { data: pageData, isLoading: loading } = useApiQuery<OrdersListData>(
+    queryKeys.orders, '/api/orders-list-data'
+  );
+  const orders = pageData?.orders || [];
+  const customers = pageData?.customers || [];
+  const products = pageData?.products || [];
 
   const getCustomer = (id: string) => customers.find(customer => customer.id === id);
   const getProduct = (id: string) => products.find(product => product.id === id);

@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { useLanguage } from '@/context/LanguageContext';
@@ -62,10 +64,7 @@ function nameInitials(name: string) {
 export default function StaffManagement() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [roles, setRoles] = useState<ShopRole[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [shopId, setShopId] = useState<string | null>(null);
+  const invalidate = useInvalidate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [credDialogOpen, setCredDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -83,27 +82,22 @@ export default function StaffManagement() {
   const [credPassword, setCredPassword] = useState('');
   const [credLoading, setCredLoading] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/staff-management-data', { credentials: 'include' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load staff management');
-      setShopId(data.shopId || null);
-      if (data.staff) setStaff(data.staff);
-      if (data.roles) setRoles(data.roles.map((r: any) => ({
-        ...r,
-        permissions: Array.isArray(r.permissions) ? r.permissions : [],
-      })));
-    } catch (err) {
-      console.error(err);
-      toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [t, toast]);
+  interface StaffManagementData {
+    shopId: string | null;
+    staff: StaffMember[];
+    roles: ShopRole[];
+  }
+  const { data: pageData, isLoading: loading } = useApiQuery<StaffManagementData>(
+    queryKeys.staffManagement, '/api/staff-management-data'
+  );
+  const staff = pageData?.staff || [];
+  const roles = (pageData?.roles || []).map((r: any) => ({
+    ...r,
+    permissions: Array.isArray(r.permissions) ? r.permissions : [],
+  }));
+  const shopId = pageData?.shopId || null;
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchData = useCallback(() => { invalidate('staff'); }, [invalidate]);
 
   const openCreateDialog = () => {
     setEditingStaff(null);
@@ -146,7 +140,7 @@ export default function StaffManagement() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        setStaff(prev => prev.map(member => member.id === editingStaff.id ? data.member : member));
+        invalidate('staff');
         toast({ title: t('staffUpdated') });
       } else {
         const res = await fetch('/api/shop-staff', {
@@ -157,7 +151,7 @@ export default function StaffManagement() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        setStaff(prev => [...prev, data.member]);
+        invalidate('staff');
         toast({ title: t('staffCreated') });
       }
       setDialogOpen(false);
@@ -175,7 +169,7 @@ export default function StaffManagement() {
       const res = await fetch(`/api/shop-staff?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setStaff(prev => prev.filter(member => member.id !== deleteTarget.id));
+      invalidate('staff');
       toast({ title: t('staffDeleted') });
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -208,7 +202,7 @@ export default function StaffManagement() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create account');
-      setStaff(prev => prev.map(member => member.id === credTarget.id ? { ...member, user_id: data.userId || member.user_id } : member));
+      invalidate('staff');
       toast({ title: t('staffAccountCreated') });
       setCredDialogOpen(false);
     } catch (err: any) {

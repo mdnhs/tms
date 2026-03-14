@@ -1,4 +1,6 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useRouter } from "next/navigation";
 import { useData } from "@/context/DataContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -104,19 +106,37 @@ function GridSkeleton({ count = 4 }: { count?: number }) {
 export default function CreateOrder() {
   const {
     settings,
-    reloadData,
   } = useData();
   const { t } = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
+  const invalidate = useInvalidate();
   const cur = settings.currency;
 
+  interface CreateOrderPageData {
+    customers: Customer[];
+    products: Product[];
+    staff: Array<{ id: string; name: string; role?: string; isActive: boolean }>;
+  }
+  const { data: pageData, isLoading: pageLoading } = useApiQuery<CreateOrderPageData>(
+    queryKeys.createOrder, '/api/create-order-data'
+  );
+
   const [step, setStep] = useState(1);
-  const [pageLoading, setPageLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [staffList, setStaffList] = useState<StaffOption[]>([]);
+  const [localCustomers, setLocalCustomers] = useState<Customer[]>([]);
+
+  // Merge server data with locally-added customers
+  const customers = useMemo(() => {
+    const serverCustomers = pageData?.customers || [];
+    const serverIds = new Set(serverCustomers.map(c => c.id));
+    return [...localCustomers.filter(c => !serverIds.has(c.id)), ...serverCustomers];
+  }, [pageData?.customers, localCustomers]);
+  const products = pageData?.products || [];
+  const staffList: StaffOption[] = useMemo(() =>
+    (pageData?.staff || []).map(s => ({ id: s.id, name: s.name, role: s.role, isActive: Boolean(s.isActive) })),
+    [pageData?.staff]
+  );
 
   // Step 1
   const [customerId, setCustomerId] = useState("");
@@ -160,58 +180,7 @@ export default function CreateOrder() {
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [specialNotes]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadCreateOrderData = async () => {
-      setPageLoading(true);
-      try {
-        const res = await fetch("/api/create-order-data", { credentials: "include" });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to load create order data");
-        }
-
-        if (cancelled) return;
-
-        setCustomers((data.customers || []) as Customer[]);
-        setProducts((data.products || []) as Product[]);
-        setStaffList(
-          Array.isArray(data.staff)
-            ? data.staff.map(
-                (staff: {
-                  id: string;
-                  name: string;
-                  role?: string;
-                  isActive: boolean;
-                }) => ({
-                  id: staff.id,
-                  name: staff.name,
-                  role: staff.role,
-                  isActive: Boolean(staff.isActive),
-                }),
-              )
-            : [],
-        );
-      } catch (err) {
-        if (!cancelled) {
-          toast({
-            title: t("error"),
-            description: err instanceof Error ? err.message : "Request failed",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        if (!cancelled) setPageLoading(false);
-      }
-    };
-
-    void loadCreateOrderData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [t, toast]);
+  // useEffect for create-order-data removed — now uses useApiQuery above
 
   const currentProduct = useMemo(
     () => products.find((p) => p.id === currentProductId),
@@ -287,7 +256,8 @@ export default function CreateOrder() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save customer");
       const c = data.customer as Customer;
-      setCustomers((prev) => [c, ...prev]);
+      setLocalCustomers((prev) => [c, ...prev]);
+      invalidate('customer');
       setCustomerId(c.id);
       setShowAddCustomer(false);
       setNewCustomer({ name: "", phone: "", address: "", notes: "" });
@@ -383,7 +353,7 @@ export default function CreateOrder() {
         }),
       }).catch(() => undefined);
 
-      void reloadData();
+      invalidate('order');
       toast({ title: t("orderCreated") });
       void sendSmsNotification(order);
       router.push(`/invoice/${order.id}`);

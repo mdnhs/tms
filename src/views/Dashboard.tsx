@@ -1,8 +1,10 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { ORDER_STATUS_LABELS, OrderStatus } from '@/types';
+import { useApiQuery } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import {
   ShoppingCart, Clock, CheckCircle, Truck, TrendingUp, ArrowRight,
   CreditCard, Users, Package, Plus, Scissors, AlertCircle,
@@ -128,39 +130,13 @@ function ValueSkeleton({ className }: { className?: string }) {
 export default function Dashboard() {
   const { settings } = useData();
   const { t, language } = useLanguage();
-  const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const cur = settings.currency || '৳';
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadSummary = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await fetch('/api/dashboard-summary', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load dashboard');
-        if (!cancelled) {
-          setSummary((data.summary || EMPTY_SUMMARY) as DashboardSummary);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-          setSummary(EMPTY_SUMMARY);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void loadSummary();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: dashData, isLoading: loading, error: queryError } = useApiQuery<{ summary: DashboardSummary }>(
+    queryKeys.dashboard, '/api/dashboard-summary'
+  );
+  const summary = dashData?.summary || EMPTY_SUMMARY;
+  const error = queryError?.message || '';
 
   const {
     todayOrders,

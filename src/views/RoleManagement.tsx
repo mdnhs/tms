@@ -1,5 +1,7 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useRouter } from 'next/navigation';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
@@ -84,26 +86,17 @@ export default function RoleManagement() {
   const router = useRouter();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [roles, setRoles] = useState<ShopRole[]>([]);
-  const [loading, setLoading] = useState(true);
+  const invalidate = useInvalidate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ShopRole | null>(null);
 
-  const fetchRoles = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/shop-roles', { credentials: 'include' }).then(r => r.json());
-      if (res.roles) {
-        setRoles(res.roles.map((r: any) => ({ ...r, permissions: normalizePermissions(r.permissions) })));
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  interface RolesData { roles: ShopRole[] }
+  const { data: pageData, isLoading: loading } = useApiQuery<RolesData>(
+    queryKeys.shopRoles, '/api/shop-roles'
+  );
+  const roles = (pageData?.roles || []).map((r: any) => ({ ...r, permissions: normalizePermissions(r.permissions) }));
 
-  useEffect(() => { fetchRoles(); }, [fetchRoles]);
+  const fetchRoles = useCallback(() => { invalidate('role'); }, [invalidate]);
 
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -114,7 +107,7 @@ export default function RoleManagement() {
       const res = await fetch(`/api/shop-roles?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setRoles(prev => prev.filter(role => role.id !== deleteTarget.id));
+      invalidate('role');
       toast({ title: t('roleDeleted') });
       setDeleteDialogOpen(false);
       setDeleteTarget(null);

@@ -1,5 +1,7 @@
 'use client';
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Product, MeasurementField } from '@/types';
@@ -79,13 +81,11 @@ function ProductSkeleton({ count = 8 }: { count?: number }) {
 }
 
 export default function Products() {
-  const { hasActionPermission, settings, reloadData } = useData();
+  const { hasActionPermission, settings } = useData();
   const { t } = useLanguage();
   const { toast } = useToast();
+  const invalidate = useInvalidate();
   const cur = settings.currency;
-  const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState({ name: '', nameBn: '', category: '', basePrice: '', image: '' });
@@ -96,28 +96,15 @@ export default function Products() {
   const formRef = useRef<HTMLFormElement>(null);
   useEnterNavigation(formRef);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/products-page-data', { credentials: 'include' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load products');
-        if (cancelled) return;
-        setProducts(data.products || []);
-        setCategories(data.categories || []);
-      } catch (err) {
-        if (!cancelled) {
-          toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void loadData();
-    return () => { cancelled = true; };
-  }, [t, toast]);
+  interface ProductsPageData {
+    products: Product[];
+    categories: string[];
+  }
+  const { data: pageData, isLoading: loading } = useApiQuery<ProductsPageData>(
+    queryKeys.products, '/api/products-page-data'
+  );
+  const products = pageData?.products || [];
+  const categories = pageData?.categories || [];
 
   const filtered = useMemo(() => {
     return products.filter(p => {
@@ -172,7 +159,6 @@ export default function Products() {
         });
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || 'Failed to update product');
-        setProducts(prev => prev.map(product => product.id === editing.id ? result.product : product));
         toast({ title: t('productUpdated') });
       } else {
         const res = await fetch('/api/products', {
@@ -183,13 +169,9 @@ export default function Products() {
         });
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || 'Failed to create product');
-        setProducts(prev => [result.product, ...prev]);
-        if (data.category && !categories.includes(data.category)) {
-          setCategories(prev => [...prev, data.category]);
-        }
         toast({ title: t('productAdded') });
       }
-      void reloadData();
+      invalidate('product');
       setShowForm(false);
     } catch (err) {
       toast({ title: t('error'), description: err instanceof Error ? err.message : 'Request failed', variant: 'destructive' });
@@ -207,8 +189,7 @@ export default function Products() {
       const res = await fetch(`/api/products?id=${deleteTarget.id}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete product');
-      setProducts(prev => prev.filter(product => product.id !== deleteTarget.id));
-      void reloadData();
+      invalidate('product');
       toast({ title: t('productDeleted') });
       setDeleteTarget(null);
     } catch (err) {

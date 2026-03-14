@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
+import { queryKeys } from '@/lib/query-keys';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
@@ -62,7 +64,7 @@ export default function RoleForm({ roleId }: RoleFormProps) {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const [loading, setLoading] = useState(!!roleId);
+  const invalidate = useInvalidate();
   const [saving, setSaving] = useState(false);
   const [formName, setFormName] = useState('');
   const [formNameBn, setFormNameBn] = useState('');
@@ -70,25 +72,21 @@ export default function RoleForm({ roleId }: RoleFormProps) {
 
   const isEdit = !!roleId;
 
-  const fetchData = useCallback(async () => {
-    try {
-      if (isEdit && roleId) {
-        const rolesRes = await fetch(`/api/shop-roles?id=${encodeURIComponent(roleId)}`, { credentials: 'include' }).then(r => r.json());
-        const role = rolesRes?.roles?.[0];
-        if (role) {
-          setFormName(role.name);
-          setFormNameBn(role.name_bn || '');
-          setFormPermissions(normalizePermissions(role.permissions));
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [roleId, isEdit]);
+  interface RoleData { roles: Array<{ name: string; name_bn?: string; permissions: any }> }
+  const { data: roleData, isLoading: loading } = useApiQuery<RoleData>(
+    queryKeys.roleDetail(roleId || ''),
+    `/api/shop-roles?id=${encodeURIComponent(roleId || '')}`,
+    isEdit,
+  );
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (roleData?.roles?.[0]) {
+      const role = roleData.roles[0];
+      setFormName(role.name);
+      setFormNameBn(role.name_bn || '');
+      setFormPermissions(normalizePermissions(role.permissions));
+    }
+  }, [roleData]);
 
   const toggleAction = (menuKey: string, action: PermActions) => {
     setFormPermissions(prev => {
@@ -147,6 +145,7 @@ export default function RoleForm({ roleId }: RoleFormProps) {
         body: JSON.stringify(isEdit ? { id: roleId, ...body } : body),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      invalidate('role');
       toast({ title: isEdit ? t('roleUpdated') : t('roleCreated') });
       router.push('/roles');
     } catch (err: any) {
