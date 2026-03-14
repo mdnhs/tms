@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
 import { queryKeys } from '@/lib/query-keys';
 import { usePagination } from '@/hooks/usePagination';
@@ -91,10 +91,13 @@ export default function StaffManagement() {
     queryKeys.staffManagement, '/api/staff-management-data'
   );
   const staff = pageData?.staff || [];
-  const roles = (pageData?.roles || []).map((r: any) => ({
-    ...r,
-    permissions: Array.isArray(r.permissions) ? r.permissions : [],
-  }));
+  const roles = useMemo(() =>
+    (pageData?.roles || []).map((r: any) => ({
+      ...r,
+      permissions: Array.isArray(r.permissions) ? r.permissions : [],
+    })),
+    [pageData?.roles],
+  );
   const shopId = pageData?.shopId || null;
 
   const fetchData = useCallback(() => { invalidate('staff'); }, [invalidate]);

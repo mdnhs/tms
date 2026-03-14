@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
 import { queryKeys } from '@/lib/query-keys';
 import { useRouter } from 'next/navigation';
@@ -94,7 +94,10 @@ export default function RoleManagement() {
   const { data: pageData, isLoading: loading } = useApiQuery<RolesData>(
     queryKeys.shopRoles, '/api/shop-roles'
   );
-  const roles = (pageData?.roles || []).map((r: any) => ({ ...r, permissions: normalizePermissions(r.permissions) }));
+  const roles = useMemo(() =>
+    (pageData?.roles || []).map((r: any) => ({ ...r, permissions: normalizePermissions(r.permissions) })),
+    [pageData?.roles],
+  );
 
   const fetchRoles = useCallback(() => { invalidate('role'); }, [invalidate]);
 

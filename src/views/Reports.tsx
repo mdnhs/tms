@@ -252,7 +252,7 @@ export default function Reports() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} autoFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
             <Popover>
@@ -263,7 +263,7 @@ export default function Reports() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} autoFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </>
