@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useMemo } from 'react';
+import { useQueryState } from 'nuqs';
 import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
 import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';
@@ -91,8 +92,8 @@ export default function Products() {
   const [form, setForm] = useState({ name: '', nameBn: '', category: '', basePrice: '', image: '' });
   const [fields, setFields] = useState<MeasurementField[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [search, setSearch] = useQueryState('search', { defaultValue: '', shallow: true, clearOnDefault: true });
+  const [activeCategory, setActiveCategory] = useQueryState('category', { defaultValue: 'all', shallow: true });
   const formRef = useRef<HTMLFormElement>(null);
   useEnterNavigation(formRef);
 
@@ -230,11 +231,11 @@ export default function Products() {
         <Input
           placeholder={t('searchByNamePhone')}
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => void setSearch(e.target.value)}
           className="pl-9 pr-9 rounded-xl bg-card"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <button onClick={() => void setSearch(null)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
@@ -250,7 +251,7 @@ export default function Products() {
           ) : (
             <>
               <button
-                onClick={() => setActiveCategory('all')}
+                onClick={() => void setActiveCategory('all')}
                 className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                   activeCategory === 'all'
                     ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
@@ -264,7 +265,7 @@ export default function Products() {
                 return (
                   <button
                     key={cat}
-                    onClick={() => setActiveCategory(cat)}
+                    onClick={() => void setActiveCategory(cat)}
                     className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                       activeCategory === cat
                         ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'

@@ -7,6 +7,7 @@ import { DataProvider } from '@/context/DataContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,18 +22,20 @@ const queryClient = new QueryClient({
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <DataProvider>
-              <DynamicFavicon />
-              {children}
-            </DataProvider>
-          </TooltipProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <NuqsAdapter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <LanguageProvider>
+            <TooltipProvider>
+              <Toaster />
+              <DataProvider>
+                <DynamicFavicon />
+                {children}
+              </DataProvider>
+            </TooltipProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </NuqsAdapter>
   );
 }

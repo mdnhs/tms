@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useQueryState } from 'nuqs';
 import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
 import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useQueryState, parseAsStringLiteral } from 'nuqs';
 import Link from 'next/link';
 import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
 import { queryKeys } from '@/lib/query-keys';
@@ -28,6 +29,7 @@ type StaffMember = {
 };
 
 const STATUSES: (OrderStatus | 'all')[] = ['all', 'pending', 'in_production', 'ready', 'delivered', 'cancelled'];
+const statusValues = ['all', 'pending', 'in_production', 'ready', 'delivered', 'cancelled'] as const;
 
 const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
   all:           { badge: 'bg-muted text-muted-foreground border-border', dot: 'bg-muted-foreground' },
@@ -105,8 +107,11 @@ export default function OrdersList() {
   const staffId = pageData?.staffId || null;
   const error = queryError?.message || '';
 
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [search, setSearch] = useQueryState('search', { defaultValue: '', shallow: true, clearOnDefault: true });
+  const [statusFilter, setStatusFilter] = useQueryState(
+    'status', 
+    parseAsStringLiteral(statusValues).withDefault('all').withOptions({ shallow: true })
+  );
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
@@ -437,7 +442,7 @@ export default function OrdersList() {
           <Input
             placeholder={t('searchOrderPlaceholder')}
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => void setSearch(e.target.value)}
             className="pl-9 rounded-xl bg-card"
           />
         </div>
@@ -452,7 +457,7 @@ export default function OrdersList() {
           STATUSES.map(s => (
             <button
               key={s}
-              onClick={() => setStatusFilter(s)}
+              onClick={() => void setStatusFilter(s)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all whitespace-nowrap shrink-0 ${
                 statusFilter === s
                   ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25'

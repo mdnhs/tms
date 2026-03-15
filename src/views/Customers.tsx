@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useMemo } from 'react';
+import { useQueryState } from 'nuqs';
 import { useApiQuery, useInvalidate } from '@/hooks/use-api-query';
 import { queryKeys } from '@/lib/query-keys';
 import { useData } from '@/context/DataContext';
@@ -94,7 +95,7 @@ export default function Customers() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const invalidate = useInvalidate();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useQueryState('search', { defaultValue: '', shallow: true, clearOnDefault: true });
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '', photo: '' });
@@ -249,11 +250,11 @@ export default function Customers() {
         <Input
           placeholder={t('searchByNamePhone')}
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => void setSearch(e.target.value)}
           className="pl-9 pr-9 rounded-xl bg-card"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+          <button onClick={() => void setSearch(null)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
             <X className="w-3.5 h-3.5" />
           </button>
         )}
