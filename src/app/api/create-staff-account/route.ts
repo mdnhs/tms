@@ -46,7 +46,10 @@ export async function POST(req: NextRequest) {
     await supabase
       .from('shop_staff')
       .update({ user_id: result.user.id })
-      .eq('id', staffId);
+      .eq('id', staffId)
+      .eq('shop_id', shopId);
+    // Remove the auto-created shop for this staff user — they belong to an existing shop
+    await supabase.from('shops').delete().eq('owner_id', result.user.id);
     return NextResponse.json({ success: true, userId: result.user.id });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to create account' }, { status: 400 });

@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       .from('shop_roles')
       .select('permissions')
       .eq('id', staffRecord.role_id)
+      .eq('shop_id', staffRecord.shop_id)
       .single();
     if (role?.permissions) permissions = role.permissions;
   }

@@ -24,11 +24,8 @@ export async function POST(req: NextRequest) {
   const supabase = getGlobalSupabase();
   if (!supabase) return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 });
 
-  // Reuse the owner's current shop when possible, even on older databases without a shops table.
-  let shopId = await getShopId(session.user.id);
-  if (!shopId) {
-    shopId = genId();
-  }
+  const shopId = await getShopId(session.user.id);
+  if (!shopId) return NextResponse.json({ error: 'No shop found for this account' }, { status: 400 });
 
   // ── Wipe existing data for this shop ──────────────────────────────────────
   await supabase.from('order_history').delete().eq('shop_id', shopId);

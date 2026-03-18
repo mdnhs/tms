@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getCloudDb } from '@/lib/cloud-db';
-import { getShopId, genId } from '@/lib/get-shop';
+import { getShopId, genId, setShopIdCache } from '@/lib/get-shop';
 import { getGlobalSupabase } from '@/lib/supabase';
 import { BANGLADESH_MOBILE_ERROR, normalizeBangladeshMobile } from '@/lib/bd-phone';
 
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
     const id = genId();
     await supabase.from('shops').insert({ id, owner_id: session.user.id, name: 'My Shop', created_at: new Date().toISOString() });
     shopId = id;
+    setShopIdCache(session.user.id, shopId);
   }
   const { id, name, phone, address, notes, photo, createdAt } = await req.json();
   const normalizedPhone = normalizeBangladeshMobile(String(phone || ''));

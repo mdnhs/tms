@@ -1,5 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { sendEmail } from './mailer';
+import { getGlobalSupabase } from './supabase';
+import { genId } from './get-shop';
 
 // Singleton pool — reused across requests in the same serverless instance
 let _pool: any = null;
@@ -43,6 +45,23 @@ export const auth = betterAuth({
           </div>
         `,
       });
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          const supabase = getGlobalSupabase();
+          if (!supabase) return;
+          const shopId = genId();
+          await supabase.from('shops').insert({
+            id: shopId,
+            owner_id: user.id,
+            name: 'My Shop',
+            created_at: new Date().toISOString(),
+          });
+        },
+      },
     },
   },
   secret: process.env.BETTER_AUTH_SECRET,
