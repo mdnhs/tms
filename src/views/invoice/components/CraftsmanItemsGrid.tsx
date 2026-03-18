@@ -7,12 +7,14 @@ interface CraftsmanItemsGridProps {
   order: Order;
   products: Product[];
   compact?: boolean;
+  hideMeasurements?: boolean;
 }
 
 export function CraftsmanItemsGrid({
   order,
   products,
   compact = false,
+  hideMeasurements = false,
 }: CraftsmanItemsGridProps) {
   const { t } = useLanguage();
 
@@ -39,21 +41,23 @@ export function CraftsmanItemsGrid({
               </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-1 pt-1.5">
-              {item.measurements.length > 0 ? (
-                item.measurements.map((measurement) => (
-                  <CraftsmanMeasurementBox
-                    key={measurement.fieldId}
-                    label={measurement.fieldNameBn}
-                    value={measurement.value || "—"}
-                  />
-                ))
-              ) : (
-                <div className="col-span-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
-                  {t("stepMeasurement")}: —
-                </div>
-              )}
-            </div>
+            {!hideMeasurements && (
+              <div className="grid grid-cols-5 gap-1 pt-1.5">
+                {item.measurements.length > 0 ? (
+                  item.measurements.map((measurement) => (
+                    <CraftsmanMeasurementBox
+                      key={measurement.fieldId}
+                      label={measurement.fieldNameBn}
+                      value={measurement.value || "—"}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-500">
+                    {t("stepMeasurement")}: —
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

@@ -89,7 +89,7 @@ export const CraftsmanInvoice = forwardRef<
           </div>
         }
       >
-        <CraftsmanItemsGrid order={order} products={products} compact />
+        <CraftsmanItemsGrid order={order} products={products} compact hideMeasurements />
       </CraftsmanSlip>
     </div>
   );
