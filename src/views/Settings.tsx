@@ -107,6 +107,18 @@ export default function Settings() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme, colorTheme, setColorTheme, fontSize, setFontSize, borderRadius, setBorderRadius, density, setDensity, reduceMotion, setReduceMotion } = useTheme();
   const { toast } = useToast();
+
+  const saveAppearance = (patch: Partial<typeof settings>) => {
+    updateSettings({ ...settings, theme, colorTheme, fontSize, borderRadius, density, reduceMotion, language, ...patch }).catch(() => {});
+  };
+
+  const handleToggleTheme = () => { toggleTheme(); saveAppearance({ theme: theme === 'dark' ? 'light' : 'dark' }); };
+  const handleSetColorTheme = (c: ColorTheme) => { setColorTheme(c); saveAppearance({ colorTheme: c }); };
+  const handleSetFontSize = (f: FontSize) => { setFontSize(f); saveAppearance({ fontSize: f }); };
+  const handleSetBorderRadius = (r: BorderRadius) => { setBorderRadius(r); saveAppearance({ borderRadius: r }); };
+  const handleSetDensity = (d: Density) => { setDensity(d); saveAppearance({ density: d }); };
+  const handleSetReduceMotion = (v: boolean) => { setReduceMotion(v); saveAppearance({ reduceMotion: v }); };
+  const handleSetLanguage = (lang: 'bn' | 'en') => { setLanguage(lang); saveAppearance({ language: lang }); };
   const [form, setForm] = useState<ShopSettings>({ ...settings });
   const [activeTab, setActiveTab] = useState<Tab>('shop');
   const session = useSession();
@@ -173,6 +185,19 @@ export default function Settings() {
   const [sbShowFields, setSbShowFields] = useState<Record<string, boolean>>({});
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+
+  // Sync form when DB settings load (settings starts as DEFAULT_SETTINGS, then updates from DB)
+  useEffect(() => {
+    if (!dataLoading) {
+      setForm({ ...settings });
+      setSbUrl(settings.supabaseUrl || '');
+      setSbAnonKey(settings.supabaseAnonKey || '');
+      setSbServiceKey(settings.supabaseServiceRoleKey || '');
+      setSbProjectId(settings.supabaseProjectId || '');
+      setSbUseCloud(!!settings.useCloudDb);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading]);
 
   useEffect(() => {
     if (!seedLoading) {
@@ -470,7 +495,7 @@ export default function Settings() {
 
     setSaveLoading(true);
     try {
-      const nextForm = { ...form, shopPhone: normalizedShopPhone || '' };
+      const nextForm = { ...form, shopPhone: normalizedShopPhone || '', theme, colorTheme, fontSize, borderRadius, density, reduceMotion, language };
       await updateSettings(nextForm);
       setForm(nextForm);
       toast({ title: t('settingsSaved'), description: t('settingsSavedDesc') });
@@ -696,7 +721,7 @@ export default function Settings() {
                   <p className="text-xs text-muted-foreground">{t('darkModeDesc')}</p>
                 </div>
               </div>
-              <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
+              <Switch checked={theme === 'dark'} onCheckedChange={handleToggleTheme} />
             </div>
 
             {/* Color swatches */}
@@ -708,7 +733,7 @@ export default function Settings() {
                   return (
                     <button
                       key={key}
-                      onClick={() => setColorTheme(key)}
+                      onClick={() => handleSetColorTheme(key)}
                       className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
                         isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-muted/20 hover:border-muted-foreground/40'
                       }`}
@@ -742,7 +767,7 @@ export default function Settings() {
                   return (
                     <button
                       key={size}
-                      onClick={() => setFontSize(size)}
+                      onClick={() => handleSetFontSize(size)}
                       className={`relative flex flex-col items-center gap-1.5 py-5 rounded-xl border-2 transition-all ${
                         isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-muted/20 hover:border-muted-foreground/40'
                       }`}
@@ -772,7 +797,7 @@ export default function Settings() {
                   return (
                     <button
                       key={value}
-                      onClick={() => setBorderRadius(value)}
+                      onClick={() => handleSetBorderRadius(value)}
                       className={`relative flex flex-col items-center gap-2.5 py-4 px-2 rounded-xl border-2 transition-all ${
                         isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-muted/20 hover:border-muted-foreground/40'
                       }`}
@@ -801,7 +826,7 @@ export default function Settings() {
                   return (
                     <button
                       key={value}
-                      onClick={() => setDensity(value)}
+                      onClick={() => handleSetDensity(value as Density)}
                       className={`relative flex flex-col items-center gap-2.5 py-4 px-3 rounded-xl border-2 transition-all ${
                         isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-muted/20 hover:border-muted-foreground/40'
                       }`}
@@ -833,7 +858,7 @@ export default function Settings() {
                   return (
                     <button
                       key={value}
-                      onClick={() => setLanguage(value as 'bn' | 'en')}
+                      onClick={() => handleSetLanguage(value as 'bn' | 'en')}
                       className={`relative flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition-all ${
                         isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-muted/20 hover:border-muted-foreground/40'
                       }`}
@@ -855,7 +880,7 @@ export default function Settings() {
               label={t('reduceMotion')}
               desc={reduceMotion ? t('reduceMotionOn') : t('reduceMotionOff')}
               checked={reduceMotion}
-              onCheckedChange={setReduceMotion}
+              onCheckedChange={handleSetReduceMotion}
             />
           </SectionCard>
 

@@ -44,6 +44,14 @@ export interface ShopSettings {
   supabaseServiceRoleKey?: string;
   supabaseProjectId?: string;
   useCloudDb?: boolean;
+  // Appearance & language (synced across devices)
+  theme?: 'light' | 'dark';
+  colorTheme?: string;
+  fontSize?: string;
+  borderRadius?: string;
+  density?: string;
+  reduceMotion?: boolean;
+  language?: 'bn' | 'en';
 }
 
 export type OrderStatus = 'pending' | 'in_production' | 'ready' | 'delivered' | 'cancelled';

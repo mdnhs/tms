@@ -19,6 +19,8 @@ import {
 } from "@/types";
 import { signIn, signUp, signOut, useSession } from "@/lib/auth-client";
 import { invalidationMap } from "@/lib/query-keys";
+import { useTheme, ColorTheme, FontSize, BorderRadius, Density } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const DEFAULT_SETTINGS: ShopSettings = {
   shopName: "Tailoring Shop",
@@ -140,6 +142,8 @@ function getErrorMessage(error: unknown) {
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const queryClient = useQueryClient();
+  const { setColorTheme, setFontSize, setBorderRadius, setDensity, setReduceMotion, toggleTheme, theme: currentTheme } = useTheme();
+  const { setLanguage } = useLanguage();
 
   const invalidate = useCallback(
     (...scopes: (keyof typeof invalidationMap)[]) => {
@@ -194,7 +198,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setStaffId(shellData.staffId || null);
       setStaffName(shellData.staffName || null);
       setStaffList(shellData.staffList || []);
-      setSettings(shellData.settings || DEFAULT_SETTINGS);
+      const loadedSettings = shellData.settings || DEFAULT_SETTINGS;
+      setSettings(loadedSettings);
+      // Apply appearance & language from DB so they sync across devices
+      if (loadedSettings.theme && loadedSettings.theme !== currentTheme) toggleTheme();
+      if (loadedSettings.colorTheme) setColorTheme(loadedSettings.colorTheme as ColorTheme);
+      if (loadedSettings.fontSize) setFontSize(loadedSettings.fontSize as FontSize);
+      if (loadedSettings.borderRadius) setBorderRadius(loadedSettings.borderRadius as BorderRadius);
+      if (loadedSettings.density) setDensity(loadedSettings.density as Density);
+      if (loadedSettings.reduceMotion !== undefined) setReduceMotion(loadedSettings.reduceMotion);
+      if (loadedSettings.language) setLanguage(loadedSettings.language);
       setNotificationCounts(
         shellData.notificationCounts || { pending: 0, due: 0, ready: 0 },
       );
@@ -229,7 +242,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       loadedRef.current = userId;
       setDataLoading(false);
     }
-  }, []);
+  }, [currentTheme, toggleTheme, setColorTheme, setFontSize, setBorderRadius, setDensity, setReduceMotion, setLanguage]);
 
   // Load all data when user logs in
   useEffect(() => {
