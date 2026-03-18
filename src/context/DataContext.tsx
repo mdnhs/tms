@@ -1,7 +1,9 @@
 'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Customer, Product, Order, OrderStatus, ShopSettings, OrderHistoryEntry, OrderHistoryAction } from '@/types';
 import { signIn, signUp, signOut, useSession } from '@/lib/auth-client';
+import { invalidationMap } from '@/lib/query-keys';
 
 const DEFAULT_SETTINGS: ShopSettings = {
   shopName: 'Tailoring Shop',
@@ -105,6 +107,17 @@ function getErrorMessage(error: unknown) {
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const session = useSession();
+  const queryClient = useQueryClient();
+
+  const invalidate = useCallback((...scopes: (keyof typeof invalidationMap)[]) => {
+    const seen = new Set<string>();
+    for (const scope of scopes) {
+      for (const key of invalidationMap[scope]) {
+        const k = JSON.stringify(key);
+        if (!seen.has(k)) { seen.add(k); queryClient.invalidateQueries({ queryKey: key as string[] }); }
+      }
+    }
+  }, [queryClient]);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -268,22 +281,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setCustomers(prev => [newC, ...prev]);
     try {
       const data = await apiFetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newC) });
+      invalidate('customer');
       return data.customer as Customer;
     } catch {
       setCustomers(prev => prev.filter(x => x.id !== id));
       throw new Error('Failed to save customer');
     }
-  }, []);
+  }, [invalidate]);
 
   const updateCustomer = useCallback(async (c: Customer) => {
     setCustomers(prev => prev.map(x => x.id === c.id ? c : x));
     await apiFetch('/api/customers', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) });
-  }, []);
+    invalidate('customer');
+  }, [invalidate]);
 
   const deleteCustomer = useCallback(async (id: string) => {
     setCustomers(prev => prev.filter(x => x.id !== id));
     await apiFetch(`/api/customers?id=${id}`, { method: 'DELETE' });
-  }, []);
+    invalidate('customer');
+  }, [invalidate]);
 
   // Products
   const addProduct = useCallback(async (p: Omit<Product, 'id'>) => {
@@ -292,22 +308,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setProducts(prev => [newP, ...prev]);
     try {
       const data = await apiFetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newP) });
+      invalidate('product');
       return data.product as Product;
     } catch {
       setProducts(prev => prev.filter(x => x.id !== id));
       throw new Error('Failed to save product');
     }
-  }, []);
+  }, [invalidate]);
 
   const updateProduct = useCallback(async (p: Product) => {
     setProducts(prev => prev.map(x => x.id === p.id ? p : x));
     await apiFetch('/api/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
-  }, []);
+    invalidate('product');
+  }, [invalidate]);
 
   const deleteProduct = useCallback(async (id: string) => {
     setProducts(prev => prev.filter(x => x.id !== id));
     await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' });
-  }, []);
+    invalidate('product');
+  }, [invalidate]);
 
   // Order history helper
   const addOrderHistory = useCallback(async (orderId: string, action: OrderHistoryAction, description: string, changes?: Record<string, { from: string; to: string }>) => {
@@ -332,17 +351,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await apiFetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newO) });
       await addOrderHistory(newO.id, 'created', 'অর্ডার তৈরি করা হয়েছে');
+      invalidate('order');
       return data.order as Order;
     } catch {
       setOrders(prev => prev.filter(x => x.id !== id));
       throw new Error('Failed to save order');
     }
-  }, [addOrderHistory]);
+  }, [addOrderHistory, invalidate]);
 
   const updateOrder = useCallback(async (o: Order) => {
     setOrders(prev => prev.map(x => x.id === o.id ? o : x));
     await apiFetch('/api/orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(o) });
-  }, []);
+    invalidate('order');
+  }, [invalidate]);
 
   const updateOrderStatus = useCallback(async (id: string, status: OrderStatus) => {
     const old = orders.find(x => x.id === id);
@@ -350,14 +371,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (old) {
       await apiFetch('/api/orders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...old, status }) });
       await addOrderHistory(id, 'status_changed', 'স্ট্যাটাস পরিবর্তন', { status: { from: old.status, to: status } });
+      invalidate('order');
     }
-  }, [orders, addOrderHistory]);
+  }, [orders, addOrderHistory, invalidate]);
 
   const deleteOrder = useCallback(async (id: string) => {
     await addOrderHistory(id, 'deleted', 'অর্ডার মুছে ফেলা হয়েছে');
     setOrders(prev => prev.filter(x => x.id !== id));
     await apiFetch(`/api/orders?id=${id}`, { method: 'DELETE' });
-  }, [addOrderHistory]);
+    invalidate('order');
+  }, [addOrderHistory, invalidate]);
 
   const getCustomer = useCallback((id: string) => customers.find(c => c.id === id), [customers]);
   const getProduct = useCallback((id: string) => products.find(p => p.id === id), [products]);
@@ -367,23 +390,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const updateSettings = useCallback(async (s: ShopSettings) => {
     setSettings(s);
     await apiFetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) });
-  }, []);
+    invalidate('settings');
+  }, [invalidate]);
 
   // Categories
   const addCategory = useCallback(async (name: string) => {
     setCategories(prev => prev.includes(name) ? prev : [...prev, name]);
     await apiFetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-  }, []);
+    invalidate('category');
+  }, [invalidate]);
 
   const updateCategory = useCallback(async (oldName: string, newName: string) => {
     setCategories(prev => prev.map(c => c === oldName ? newName : c));
     await apiFetch('/api/categories', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldName, newName }) });
-  }, []);
+    invalidate('category');
+  }, [invalidate]);
 
   const deleteCategory = useCallback(async (name: string) => {
     setCategories(prev => prev.filter(c => c !== name));
     await apiFetch(`/api/categories?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
-  }, []);
+    invalidate('category');
+  }, [invalidate]);
 
   // Notifications (stays in localStorage)
   const markNotificationRead = useCallback((key: string) => {
