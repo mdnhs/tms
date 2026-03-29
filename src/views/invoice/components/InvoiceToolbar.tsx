@@ -5,9 +5,13 @@ import { useLanguage } from "@/context/LanguageContext";
 
 interface InvoiceToolbarProps {
   onDownloadPdf: () => void;
+  children?: React.ReactNode;
 }
 
-export function InvoiceToolbar({ onDownloadPdf }: InvoiceToolbarProps) {
+export function InvoiceToolbar({
+  onDownloadPdf,
+  children,
+}: InvoiceToolbarProps) {
   const { t } = useLanguage();
 
   return (
@@ -19,6 +23,7 @@ export function InvoiceToolbar({ onDownloadPdf }: InvoiceToolbarProps) {
         <ArrowLeft className="w-4 h-4" /> {t("orderList")}
       </Link>
       <div className="flex items-center gap-2">
+        {children}
         <Button
           onClick={onDownloadPdf}
           variant="outline"
