@@ -27,7 +27,9 @@ export function CraftsmanItemsGrid({
             key={`${item.productId}-${index}`}
             className={`rounded-xl border border-slate-200 ${compact ? "px-2 py-1.5" : "px-2.5 py-2"} break-inside-avoid`}
           >
-            <div className="flex items-start justify-between gap-1.5 border-b border-dashed border-slate-300 pb-1">
+            <div
+              className={`flex items-start justify-between gap-1.5 ${hideMeasurements ? "" : "border-b border-dashed border-slate-300 pb-1"}`}
+            >
               <div>
                 <p className="text-[12px] font-semibold text-slate-900 font-bangla leading-tight">
                   {product?.nameBn || product?.name || "-"}

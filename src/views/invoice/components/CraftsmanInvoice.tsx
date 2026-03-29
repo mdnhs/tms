@@ -75,21 +75,26 @@ export const CraftsmanInvoice = forwardRef<
                 {t("wages")}
               </p>
               <div className="pt-1 text-xs font-medium text-slate-700">
-                ....................
+                --------------------------------------------
               </div>
             </div>
             <div className="flex flex-col justify-end items-end min-h-[44px]">
               <p className="text-[10px] text-slate-500 mb-3 font-bangla">
                 {t("signature")}
               </p>
-              <div className="w-28 pt-1 text-right text-xs font-medium text-slate-700">
-                ....................
+              <div className="pt-1 text-right text-xs font-medium text-slate-700">
+                --------------------------------------------
               </div>
             </div>
           </div>
         }
       >
-        <CraftsmanItemsGrid order={order} products={products} compact hideMeasurements />
+        <CraftsmanItemsGrid
+          order={order}
+          products={products}
+          compact
+          hideMeasurements
+        />
       </CraftsmanSlip>
     </div>
   );

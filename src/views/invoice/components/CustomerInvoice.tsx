@@ -208,10 +208,7 @@ function ProductsTable({
           {order.items.map((item, i) => {
             const product = getProduct(products, item.productId);
             return (
-              <tr
-                key={i}
-                className="border-b border-border/50 last:border-0"
-              >
+              <tr key={i} className="border-b border-border/50 last:border-0">
                 <td className="py-3 font-medium">
                   {product?.nameBn || product?.name || "-"}
                 </td>
