@@ -35,6 +35,7 @@ export interface CraftsmanMeasurementBoxProps {
 export interface CraftsmanInfoFieldProps {
   label: string;
   value: string;
+  secondaryValue?: string;
   inputStyle?: boolean;
   borderless?: boolean;
   compact?: boolean;
@@ -46,6 +47,7 @@ export interface CraftsmanSlipProps {
   showShopHeader?: boolean;
   showDeliveryDateField?: boolean;
   orderId: string;
+  customerName?: string;
   invoiceNo: string;
   createdAt: string;
   assignedStaffName: string;
@@ -56,6 +58,7 @@ export interface CraftsmanSlipProps {
   shopLogo?: string;
   title: string;
   orderLabel: string;
+  customerNameLabel?: string;
   assignedToLabel: string;
   deliveryDateLabel: string;
   children: React.ReactNode;

@@ -3,6 +3,7 @@ import { CraftsmanInfoFieldProps } from "../types";
 export function CraftsmanInfoField({
   label,
   value,
+  secondaryValue,
   inputStyle = false,
   borderless = false,
   compact = false,
@@ -19,7 +20,7 @@ export function CraftsmanInfoField({
     : "text-xs font-semibold text-slate-900 mt-0.5";
 
   const inputClass = compact
-    ? "min-h-7 rounded-lg border border-slate-400 bg-white px-2 py-1 text-[11px] font-semibold text-slate-900"
+    ? "min-h-8 rounded-lg border border-slate-400 bg-white px-2 py-1 text-[11px] font-semibold text-slate-900"
     : "min-h-8 rounded-lg border border-slate-400 bg-white px-2 py-1 text-xs font-semibold text-slate-900";
 
   return (
@@ -41,15 +42,22 @@ export function CraftsmanInfoField({
           ) : null}
         </div>
       ) : (
-        <p
-          className={
-            borderless
-              ? plainValueClass
-              : "font-mono text-xs font-bold text-slate-900 mt-0.5"
-          }
-        >
-          {value}
-        </p>
+        <div className={borderless ? plainValueClass : "mt-0.5"}>
+          <p
+            className={
+              borderless
+                ? "font-mono"
+                : "font-mono text-xs font-bold text-slate-900"
+            }
+          >
+            {value}
+          </p>
+          {secondaryValue ? (
+            <p className="text-[10px] font-medium text-slate-600 font-bangla leading-tight mt-1">
+              {secondaryValue}
+            </p>
+          ) : null}
+        </div>
       )}
     </div>
   );

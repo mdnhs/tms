@@ -176,6 +176,7 @@ export default function InvoicePage() {
               ? { ...order, items: [order.items[selectedItemIndex]] }
               : order
           }
+          customer={customer}
           products={products}
           invoiceNo={invoiceNo}
           assignedStaffName={assignedStaffName || ""}

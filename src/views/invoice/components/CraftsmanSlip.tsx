@@ -8,6 +8,7 @@ export function CraftsmanSlip({
   showShopHeader = false,
   showDeliveryDateField = false,
   orderId,
+  customerName,
   invoiceNo,
   createdAt,
   assignedStaffName,
@@ -18,6 +19,7 @@ export function CraftsmanSlip({
   shopLogo,
   title,
   orderLabel,
+  customerNameLabel,
   assignedToLabel,
   deliveryDateLabel,
   children,
@@ -60,6 +62,11 @@ export function CraftsmanSlip({
           compact={!showShopHeader || compact}
           label={orderLabel}
           value={formatOrderId(orderId)}
+          secondaryValue={
+            customerName
+              ? `${customerNameLabel || "Customer"}: ${customerName}`
+              : undefined
+          }
           borderless
         />
         <CraftsmanInfoField

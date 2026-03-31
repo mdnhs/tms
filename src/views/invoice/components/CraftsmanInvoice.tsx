@@ -1,13 +1,14 @@
 import { forwardRef } from "react";
 import { Scissors } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { Order, Product, ShopSettings } from "@/types";
+import { Customer, Order, Product, ShopSettings } from "@/types";
 import { CraftsmanSlip } from "./CraftsmanSlip";
 import { CraftsmanItemsGrid } from "./CraftsmanItemsGrid";
 import { formatShortDateBn } from "../utils";
 
 interface CraftsmanInvoiceProps {
   order: Order;
+  customer: Customer;
   products: Product[];
   invoiceNo: string;
   assignedStaffName: string;
@@ -18,7 +19,7 @@ export const CraftsmanInvoice = forwardRef<
   HTMLDivElement,
   CraftsmanInvoiceProps
 >(function CraftsmanInvoice(
-  { order, products, invoiceNo, assignedStaffName, settings },
+  { order, customer, products, invoiceNo, assignedStaffName, settings },
   ref,
 ) {
   const { t } = useLanguage();
@@ -30,6 +31,7 @@ export const CraftsmanInvoice = forwardRef<
 
   const sharedSlipProps = {
     orderId: order.id,
+    customerName: customer.name,
     invoiceNo,
     createdAt: order.createdAt,
     assignedStaffName,
@@ -40,6 +42,7 @@ export const CraftsmanInvoice = forwardRef<
     shopLogo: settings.shopLogo,
     title: t("craftsmanInvoice"),
     orderLabel: t("order"),
+    customerNameLabel: t("customerName"),
     assignedToLabel: t("assignedTo"),
     deliveryDateLabel: t("deliveryDate"),
     showDeliveryDateField: true,
