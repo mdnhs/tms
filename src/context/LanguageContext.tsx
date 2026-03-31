@@ -49,6 +49,7 @@ const translations: Record<string, Record<Language, string>> = {
   qty: { bn: "পরিমাণ", en: "Qty" },
   unitPrice: { bn: "একক মূল্য", en: "Unit Price" },
   total: { bn: "মোট", en: "Total" },
+  range: { bn: "রেঞ্জ", en: "Range" },
   advance: { bn: "অ্যাডভান্স", en: "Advance" },
   due: { bn: "বাকি", en: "Due" },
   status: { bn: "স্ট্যাটাস", en: "Status" },

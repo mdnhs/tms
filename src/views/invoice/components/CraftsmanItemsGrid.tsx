@@ -16,7 +16,7 @@ export function CraftsmanItemsGrid({
   compact = false,
   hideMeasurements = false,
 }: CraftsmanItemsGridProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -32,7 +32,9 @@ export function CraftsmanItemsGrid({
             >
               <div>
                 <p className="text-[12px] font-semibold text-slate-900 font-bangla leading-tight">
-                  {product?.nameBn || product?.name || "-"}
+                  {language === "bn"
+                    ? product?.nameBn || product?.name || "-"
+                    : product?.name || product?.nameBn || "-"}
                 </p>
                 <p className="text-[10px] text-slate-500">
                   {formatOrderId(order.id)}
@@ -49,7 +51,11 @@ export function CraftsmanItemsGrid({
                   item.measurements.map((measurement) => (
                     <CraftsmanMeasurementBox
                       key={measurement.fieldId}
-                      label={measurement.fieldNameBn}
+                      label={
+                        language === "bn"
+                          ? measurement.fieldNameBn || measurement.fieldName
+                          : measurement.fieldName || measurement.fieldNameBn
+                      }
                       value={measurement.value || "—"}
                     />
                   ))

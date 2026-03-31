@@ -45,6 +45,7 @@ export const CraftsmanInvoice = forwardRef<
     customerNameLabel: t("customerName"),
     assignedToLabel: t("assignedTo"),
     deliveryDateLabel: t("deliveryDate"),
+    rangeTitle: t("range"),
     showDeliveryDateField: true,
   };
 

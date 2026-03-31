@@ -24,7 +24,9 @@ export interface InvoiceHeaderProps {
   deliveryDateText?: string;
   deliveryDateTitle?: string;
   deliveryDateLabel?: string;
+  rangeTitle?: string;
   showDeliveryDate?: boolean;
+  showRangeField?: boolean;
 }
 
 export interface CraftsmanMeasurementBoxProps {
@@ -61,6 +63,7 @@ export interface CraftsmanSlipProps {
   customerNameLabel?: string;
   assignedToLabel: string;
   deliveryDateLabel: string;
+  rangeTitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }

@@ -22,6 +22,7 @@ export function CraftsmanSlip({
   customerNameLabel,
   assignedToLabel,
   deliveryDateLabel,
+  rangeTitle,
   children,
   footer,
 }: CraftsmanSlipProps) {
@@ -51,7 +52,9 @@ export function CraftsmanSlip({
               ? "...../...../......"
               : undefined
           }
+          rangeTitle={showDeliveryDateField ? rangeTitle : undefined}
           showDeliveryDate={showDeliveryDateField}
+          showRangeField={showDeliveryDateField}
         />
       ) : null}
 

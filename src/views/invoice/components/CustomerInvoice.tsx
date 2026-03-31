@@ -33,7 +33,7 @@ export const CustomerInvoice = forwardRef<HTMLDivElement, CustomerInvoiceProps>(
     { order, customer, products, invoiceNo, settings },
     ref,
   ) {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const shopName = settings.shopNameBn || settings.shopName || "S";
 
     return (
@@ -61,7 +61,12 @@ export const CustomerInvoice = forwardRef<HTMLDivElement, CustomerInvoiceProps>(
         </div>
 
         {/* Products Table */}
-        <ProductsTable order={order} products={products} settings={settings} />
+        <ProductsTable
+          order={order}
+          products={products}
+          settings={settings}
+          language={language}
+        />
 
         {/* Special Notes */}
         {order.specialNotes && (
@@ -76,7 +81,12 @@ export const CustomerInvoice = forwardRef<HTMLDivElement, CustomerInvoiceProps>(
         )}
 
         {/* Payment Summary */}
-        <PaymentSummary order={order} products={products} settings={settings} />
+        <PaymentSummary
+          order={order}
+          products={products}
+          settings={settings}
+          language={language}
+        />
 
         {/* Footer */}
         <div className="px-8 py-5 border-t border-border bg-muted/20 text-center space-y-1 print-no-break">
@@ -175,10 +185,12 @@ function ProductsTable({
   order,
   products,
   settings,
+  language,
 }: {
   order: Order;
   products: Product[];
   settings: ShopSettings;
+  language: "bn" | "en";
 }) {
   const { t } = useLanguage();
 
@@ -210,7 +222,9 @@ function ProductsTable({
             return (
               <tr key={i} className="border-b border-border/50 last:border-0">
                 <td className="py-3 font-medium">
-                  {product?.nameBn || product?.name || "-"}
+                  {language === "bn"
+                    ? product?.nameBn || product?.name || "-"
+                    : product?.name || product?.nameBn || "-"}
                 </td>
                 <td className="py-3 text-center text-muted-foreground">
                   {item.quantity}
@@ -236,10 +250,12 @@ function PaymentSummary({
   order,
   products,
   settings,
+  language,
 }: {
   order: Order;
   products: Product[];
   settings: ShopSettings;
+  language: "bn" | "en";
 }) {
   const { t } = useLanguage();
 
@@ -256,7 +272,10 @@ function PaymentSummary({
                   className="flex justify-between text-xs text-muted-foreground"
                 >
                   <span>
-                    {product?.nameBn} ×{item.quantity}
+                    {language === "bn"
+                      ? product?.nameBn || product?.name
+                      : product?.name || product?.nameBn}{" "}
+                    ×{item.quantity}
                   </span>
                   <span>
                     {settings.currency}

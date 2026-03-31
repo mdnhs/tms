@@ -13,7 +13,9 @@ export function InvoiceHeader({
   deliveryDateText,
   deliveryDateTitle,
   deliveryDateLabel,
+  rangeTitle,
   showDeliveryDate,
+  showRangeField,
 }: InvoiceHeaderProps) {
   return (
     <div className="px-3.5 pt-4 pb-4 border-b border-border print-no-break">
@@ -60,22 +62,32 @@ export function InvoiceHeader({
             <Calendar className="w-3 h-3" />
             {formatDateBn(createdAt)}
           </p>
-          {showDeliveryDate ? (
-            <div className="mt-2">
-              <p className="text-sm font-semibold text-muted-foreground font-bangla mb-1 text-right">
-                {deliveryDateTitle}
-              </p>
-              <div className="min-h-8 min-w-36 rounded-lg border border-slate-400 bg-white px-2 py-1 text-xs font-semibold text-slate-900 flex items-center justify-center">
-                {deliveryDateText || (
-                  <span className="font-mono tracking-tight">
-                    {deliveryDateLabel}
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
+      {showDeliveryDate ? (
+        <div className="mt-2 flex items-start gap-3 w-full">
+          {showRangeField ? (
+            <div className="w-40 shrink-0">
+              <p className="text-sm font-semibold text-muted-foreground font-bangla mb-1 ">
+                {rangeTitle}
+              </p>
+              <div className="min-h-8 w-40 rounded-lg border border-slate-400 bg-white px-2 py-1" />
+            </div>
+          ) : null}
+          <div className="w-40 shrink-0 ml-auto">
+            <p className="text-sm font-semibold text-muted-foreground font-bangla mb-1 text-right">
+              {deliveryDateTitle}
+            </p>
+            <div className="min-h-8 w-40 rounded-lg border border-slate-400 bg-white px-2 py-1 text-xs font-semibold text-slate-900 flex items-center justify-center">
+              {deliveryDateText || (
+                <span className="font-mono tracking-tight">
+                  {deliveryDateLabel}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

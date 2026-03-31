@@ -25,7 +25,7 @@ export default function InvoicePage() {
   const params = useParams();
   const id = params?.id as string | undefined;
   const { settings, hasActionPermission, userType } = useData();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const { loading, order, customers, products, staffList } =
     useInvoiceData(id);
@@ -128,8 +128,23 @@ export default function InvoicePage() {
                 className="rounded-xl gap-1.5 h-9"
               >
                 {selectedItemIndex !== null
-                  ? getProduct(products, order.items[selectedItemIndex].productId)
-                      ?.nameBn || t("productWise")
+                  ? (language === "bn"
+                      ? getProduct(
+                          products,
+                          order.items[selectedItemIndex].productId,
+                        )?.nameBn ||
+                        getProduct(
+                          products,
+                          order.items[selectedItemIndex].productId,
+                        )?.name
+                      : getProduct(
+                          products,
+                          order.items[selectedItemIndex].productId,
+                        )?.name ||
+                        getProduct(
+                          products,
+                          order.items[selectedItemIndex].productId,
+                        )?.nameBn) || t("productWise")
                   : t("allProducts")}
                 <ChevronDown className="w-3.5 h-3.5" />
               </Button>
@@ -154,7 +169,9 @@ export default function InvoicePage() {
                       className={`mr-2 h-4 w-4 ${selectedItemIndex === index ? "opacity-100" : "opacity-0"}`}
                     />
                     <span className="truncate">
-                      {product?.nameBn || product?.name || `Product ${index + 1}`}
+                      {language === "bn"
+                        ? product?.nameBn || product?.name || `Product ${index + 1}`
+                        : product?.name || product?.nameBn || `Product ${index + 1}`}
                     </span>
                   </DropdownMenuItem>
                 );
