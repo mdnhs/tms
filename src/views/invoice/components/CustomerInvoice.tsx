@@ -18,7 +18,7 @@ import {
   ORDER_STATUS_COLORS,
 } from "@/types";
 import { InvoiceHeader } from "./InvoiceHeader";
-import { getProduct, formatOrderId } from "../utils";
+import { getProduct, formatOrderId, formatShortDate } from "../utils";
 
 interface CustomerInvoiceProps {
   order: Order;
@@ -145,7 +145,7 @@ function OrderInfoSection({
   order: Order;
   settings: ShopSettings;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <div>
@@ -171,8 +171,7 @@ function OrderInfoSection({
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
             <p className="text-sm text-muted-foreground">
-              {t("deliveryDate")}:{" "}
-              {new Date(order.deliveryDate).toLocaleDateString("bn-BD")}
+              {t("deliveryDate")}: {formatShortDate(order.deliveryDate, language)}
             </p>
           </div>
         )}

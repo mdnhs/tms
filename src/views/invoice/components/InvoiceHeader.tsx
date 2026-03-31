@@ -1,6 +1,7 @@
 import { MapPin, Phone, Calendar } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 import { InvoiceHeaderProps } from "../types";
-import { formatDateBn } from "../utils";
+import { formatDate } from "../utils";
 
 export function InvoiceHeader({
   title,
@@ -17,6 +18,8 @@ export function InvoiceHeader({
   showDeliveryDate,
   showRangeField,
 }: InvoiceHeaderProps) {
+  const { language } = useLanguage();
+
   return (
     <div className="px-3.5 pt-4 pb-4 border-b border-border print-no-break">
       <div className="flex items-start justify-between">
@@ -60,7 +63,7 @@ export function InvoiceHeader({
           </p>
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
             <Calendar className="w-3 h-3" />
-            {formatDateBn(createdAt)}
+            {formatDate(createdAt, language)}
           </p>
         </div>
       </div>

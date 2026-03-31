@@ -4,7 +4,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { Customer, Order, Product, ShopSettings } from "@/types";
 import { CraftsmanSlip } from "./CraftsmanSlip";
 import { CraftsmanItemsGrid } from "./CraftsmanItemsGrid";
-import { formatShortDateBn } from "../utils";
+import { formatShortDate } from "../utils";
 
 interface CraftsmanInvoiceProps {
   order: Order;
@@ -22,11 +22,11 @@ export const CraftsmanInvoice = forwardRef<
   { order, customer, products, invoiceNo, assignedStaffName, settings },
   ref,
 ) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const shopName = settings.shopNameBn || settings.shopName || "S";
   const deliveryDateText = order.deliveryDate
-    ? formatShortDateBn(order.deliveryDate)
+    ? formatShortDate(order.deliveryDate, language)
     : "";
 
   const sharedSlipProps = {
