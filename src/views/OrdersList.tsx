@@ -19,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePagination } from '@/hooks/usePagination';
 import Pagination from '@/components/Pagination';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMeasurementSuggestions, MeasurementHistoryEntry } from '@/hooks/useMeasurementHistory';
+import { MeasurementInput } from '@/components/MeasurementInput';
 
 type StaffMember = {
   id: string;
@@ -92,6 +94,7 @@ export default function OrdersList() {
     customers: Customer[];
     products: Product[];
     staff: StaffMember[];
+    measurementHistory: MeasurementHistoryEntry[];
     userType: string;
     staffId: string | null;
   }
@@ -107,6 +110,7 @@ export default function OrdersList() {
   const staffId = pageData?.staffId || null;
   const error = queryError?.message || '';
 
+  const { getSuggestions } = useMeasurementSuggestions(pageData?.measurementHistory || []);
   const [search, setSearch] = useQueryState('search', { defaultValue: '', shallow: true, clearOnDefault: true });
   const [statusFilter, setStatusFilter] = useQueryState(
     'status', 
@@ -826,7 +830,7 @@ export default function OrdersList() {
                         {item.measurements.map((m, measIdx) => (
                           <div key={m.fieldId}>
                             <label className="text-xs text-muted-foreground">{m.fieldNameBn}</label>
-                            <Input value={m.value} onChange={e => updateEditMeasurement(itemIdx, measIdx, e.target.value)} className="h-8 text-sm" />
+                            <MeasurementInput value={m.value} onChange={val => updateEditMeasurement(itemIdx, measIdx, val)} suggestions={getSuggestions(m.fieldName)} className="h-8 text-sm" />
                           </div>
                         ))}
                       </div>

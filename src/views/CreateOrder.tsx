@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
+import { useMeasurementSuggestions, MeasurementHistoryEntry } from "@/hooks/useMeasurementHistory";
+import { MeasurementInput } from "@/components/MeasurementInput";
 import { useEnterNavigation } from "@/hooks/useEnterNavigation";
 import { normalizeBangladeshMobile } from "@/lib/bd-phone";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,6 +119,7 @@ export default function CreateOrder() {
     customers: Customer[];
     products: Product[];
     staff: Array<{ id: string; name: string; role?: string; isActive: boolean }>;
+    measurementHistory: MeasurementHistoryEntry[];
   }
   const { data: pageData, isLoading: pageLoading } = useApiQuery<CreateOrderPageData>(
     queryKeys.createOrder, '/api/create-order-data'
@@ -133,6 +136,7 @@ export default function CreateOrder() {
     return [...localCustomers.filter(c => !serverIds.has(c.id)), ...serverCustomers];
   }, [pageData?.customers, localCustomers]);
   const products = pageData?.products || [];
+  const { getSuggestions } = useMeasurementSuggestions(pageData?.measurementHistory || []);
   const staffList: StaffOption[] = useMemo(() =>
     (pageData?.staff || []).map(s => ({ id: s.id, name: s.name, role: s.role, isActive: Boolean(s.isActive) })),
     [pageData?.staff]
@@ -741,15 +745,16 @@ export default function CreateOrder() {
                         <Label className="text-xs font-medium text-muted-foreground">
                           {m.fieldNameBn}
                         </Label>
-                        <Input
+                        <MeasurementInput
                           value={m.value}
-                          onChange={(e) =>
+                          onChange={(val) =>
                             setCurrentMeasurements((ms) =>
                               ms.map((x, idx) =>
-                                idx === i ? { ...x, value: e.target.value } : x,
+                                idx === i ? { ...x, value: val } : x,
                               ),
                             )
                           }
+                          suggestions={getSuggestions(m.fieldName)}
                           placeholder={t("inchPlaceholder")}
                           className="rounded-xl h-9 text-sm"
                         />

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   }
 
   const cloud = getCloudDb(shopId);
-  const [customersResult, productsResult, staffResult] = await Promise.all([
+  const [customersResult, productsResult, staffResult, measurementHistoryResult] = await Promise.all([
     cloud
       .from('customers')
       .select('id, name, phone, address, notes, photo, created_at')
@@ -66,6 +66,12 @@ export async function GET(req: NextRequest) {
       .select('id, name, role, is_active')
       .eq('shop_id', shopId)
       .order('created_at', { ascending: true }),
+    cloud
+      .from('measurement_history')
+      .select('field_name, value, use_count')
+      .eq('shop_id', shopId)
+      .order('use_count', { ascending: false })
+      .limit(500),
   ]);
 
   const firstError = customersResult.error || productsResult.error || staffResult.error;
@@ -100,8 +106,14 @@ export async function GET(req: NextRequest) {
     isActive: Boolean(row.is_active),
   }));
 
+  const measurementHistory = (measurementHistoryResult.data || []).map((row: { field_name: string; value: string; use_count: number }) => ({
+    fieldName: row.field_name,
+    value: row.value,
+    useCount: row.use_count,
+  }));
+
   return NextResponse.json(
-    { customers, products, staff },
+    { customers, products, staff, measurementHistory },
     { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=20' } },
   );
 }

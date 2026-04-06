@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
   }
 
   const cloud = getCloudDb(shopId);
-  const [ordersResult, customersResult, productsResult, staffResult, currentStaffResult] = await Promise.all([
+  const [ordersResult, customersResult, productsResult, staffResult, currentStaffResult, measurementHistoryResult] = await Promise.all([
     cloud
       .from('orders')
       .select('id, customer_id, items, measurements, product_id, quantity, unit_price, total_price, advance_paid, due_amount, delivery_date, special_notes, status, assigned_to, created_at')
@@ -119,6 +119,7 @@ export async function GET(req: NextRequest) {
     cloud.from('products').select('id, name, name_bn, category, base_price, image, measurement_fields').eq('shop_id', shopId),
     cloud.from('shop_staff').select('id, name, phone, role, is_active').eq('shop_id', shopId).order('created_at', { ascending: true }),
     cloud.from('shop_staff').select('id').eq('user_id', session.user.id).eq('is_active', true).maybeSingle(),
+    cloud.from('measurement_history').select('field_name, value, use_count').eq('shop_id', shopId).order('use_count', { ascending: false }).limit(500),
   ]);
 
   const firstError = ordersResult.error || customersResult.error || productsResult.error || staffResult.error || currentStaffResult.error;
@@ -153,12 +154,19 @@ export async function GET(req: NextRequest) {
     isActive: Boolean(row.is_active),
   }));
 
+  const measurementHistory = (measurementHistoryResult.data || []).map((row: { field_name: string; value: string; use_count: number }) => ({
+    fieldName: row.field_name,
+    value: row.value,
+    useCount: row.use_count,
+  }));
+
   return NextResponse.json(
     {
       orders,
       customers,
       products,
       staff,
+      measurementHistory,
       userType: currentStaffResult.data ? 'staff' : 'owner',
       staffId: currentStaffResult.data?.id || null,
     },

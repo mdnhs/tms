@@ -134,6 +134,18 @@ CREATE INDEX IF NOT EXISTS idx_orders_shop_customer ON orders(shop_id, customer_
 CREATE INDEX IF NOT EXISTS idx_orders_shop_status ON orders(shop_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_shop_assigned_to ON orders(shop_id, assigned_to);
 
+-- Measurement history (auto-suggest previously used values)
+CREATE TABLE IF NOT EXISTS measurement_history (
+  id TEXT PRIMARY KEY,
+  shop_id TEXT NOT NULL,
+  field_name TEXT NOT NULL,
+  value TEXT NOT NULL,
+  use_count INTEGER NOT NULL DEFAULT 1,
+  last_used_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(shop_id, field_name, value)
+);
+CREATE INDEX IF NOT EXISTS idx_measurement_history_shop_field ON measurement_history(shop_id, field_name);
+
 -- Order history
 CREATE TABLE IF NOT EXISTS order_history (
   id TEXT PRIMARY KEY,

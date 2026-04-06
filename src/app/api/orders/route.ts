@@ -105,6 +105,10 @@ export async function POST(req: NextRequest) {
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Save measurement history (fire-and-forget)
+  void saveMeasurementHistory(cloud, shopId, items || []);
+
   return NextResponse.json({ order: parseOrder(data) });
 }
 
@@ -140,6 +144,10 @@ export async function PATCH(req: NextRequest) {
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Save measurement history (fire-and-forget)
+  void saveMeasurementHistory(cloud, shopId, items || []);
+
   return NextResponse.json({ order: parseOrder(data) });
 }
 
@@ -157,4 +165,55 @@ export async function DELETE(req: NextRequest) {
   const { error } = await cloud.from('orders').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
+}
+
+/** Upsert measurement values from order items into measurement_history (fire-and-forget) */
+async function saveMeasurementHistory(
+  cloud: ReturnType<typeof getCloudDb>,
+  shopId: string,
+  items: { measurements?: { fieldName: string; value: string }[] }[],
+) {
+  try {
+    const unique = new Map<string, { fieldName: string; value: string }>();
+    for (const item of items) {
+      for (const m of item.measurements || []) {
+        const v = m.value?.trim();
+        if (v) unique.set(`${m.fieldName}::${v}`, { fieldName: m.fieldName, value: v });
+      }
+    }
+    if (unique.size === 0) return;
+
+    // Fetch existing rows in one query
+    const fieldNames = [...new Set([...unique.values()].map((m) => m.fieldName))];
+    const { data: existing } = await cloud
+      .from('measurement_history')
+      .select('id, field_name, value, use_count')
+      .eq('shop_id', shopId)
+      .in('field_name', fieldNames);
+
+    const existingMap = new Map<string, { id: string; use_count: number }>();
+    for (const row of existing || []) {
+      existingMap.set(`${row.field_name}::${row.value}`, { id: row.id, use_count: row.use_count });
+    }
+
+    const toInsert: { id: string; shop_id: string; field_name: string; value: string; use_count: number; last_used_at: string }[] = [];
+    const toUpdate: { id: string; use_count: number; last_used_at: string }[] = [];
+    const now = new Date().toISOString();
+
+    for (const [key, m] of unique) {
+      const ex = existingMap.get(key);
+      if (ex) {
+        toUpdate.push({ id: ex.id, use_count: ex.use_count + 1, last_used_at: now });
+      } else {
+        toInsert.push({ id: genId(), shop_id: shopId, field_name: m.fieldName, value: m.value, use_count: 1, last_used_at: now });
+      }
+    }
+
+    const ops: PromiseLike<unknown>[] = [];
+    if (toInsert.length) ops.push(cloud.from('measurement_history').insert(toInsert));
+    for (const u of toUpdate) ops.push(cloud.from('measurement_history').update({ use_count: u.use_count, last_used_at: u.last_used_at }).eq('id', u.id));
+    await Promise.all(ops);
+  } catch {
+    // Non-critical — don't fail the order
+  }
 }
