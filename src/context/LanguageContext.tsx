@@ -711,6 +711,10 @@ const translations: Record<string, Record<Language, string>> = {
     bn: "কারিগরদের মজুরি ব্যবস্থাপনার জন্য এই সেকশন ব্যবহার করুন",
     en: "Use this section to manage craftsman wages",
   },
+  comingSoon: {
+    bn: "শীঘ্রই আসছে",
+    en: "Coming Soon",
+  },
   wagesSetupPending: {
     bn: "মজুরি ম্যানেজমেন্ট স্ক্রিন প্রস্তুত হচ্ছে",
     en: "Wage management screen is being prepared",

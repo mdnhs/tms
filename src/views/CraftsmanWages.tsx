@@ -1,6 +1,6 @@
 'use client';
 
-import { Wallet, Hammer, BadgeDollarSign } from 'lucide-react';
+import { Wallet, BadgeDollarSign } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function CraftsmanWages() {
@@ -25,19 +25,10 @@ export default function CraftsmanWages() {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <BadgeDollarSign className="h-8 w-8" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">{t('craftsmanWages')}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('comingSoon')}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{t('wagesSetupPending')}</p>
 
-          <div className="mt-6 grid w-full gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-background/60 p-4 text-left">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
-                <Hammer className="h-4 w-4 text-primary" />
-                {t('craftsmanView')}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('craftsmanDashboardDesc')}
-              </p>
-            </div>
+          <div className="mt-6 w-full">
             <div className="rounded-2xl border border-border bg-background/60 p-4 text-left">
               <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
                 <Wallet className="h-4 w-4 text-primary" />
