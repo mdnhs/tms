@@ -706,6 +706,15 @@ const translations: Record<string, Record<Language, string>> = {
   overdue: { bn: "সময় পার", en: "Overdue" },
   daysLeft: { bn: "দিন বাকি", en: "days left" },
   craftsmanView: { bn: "কারিগর ভিউ", en: "Craftsman View" },
+  craftsmanWages: { bn: "কারিগর মজুরি", en: "Craftsman Wages" },
+  craftsmanWagesDesc: {
+    bn: "কারিগরদের মজুরি ব্যবস্থাপনার জন্য এই সেকশন ব্যবহার করুন",
+    en: "Use this section to manage craftsman wages",
+  },
+  wagesSetupPending: {
+    bn: "মজুরি ম্যানেজমেন্ট স্ক্রিন প্রস্তুত হচ্ছে",
+    en: "Wage management screen is being prepared",
+  },
 };
 
 interface LanguageContextType {

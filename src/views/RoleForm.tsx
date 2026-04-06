@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Shield, ArrowLeft, Save,
   LayoutDashboard, Users, Package, Tag, ShoppingCart,
-  ClipboardList, BarChart3, Settings, Hammer, FileText,
+  ClipboardList, BarChart3, Settings, Hammer, FileText, Wallet,
   Eye, Edit3, Trash, CheckSquare, Square,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
@@ -31,6 +31,7 @@ const MENU_PERMISSIONS: { key: string; icon: any; labelKey: string; actions: Per
   { key: 'craftsman_invoice', icon: Hammer,          labelKey: 'craftsmanInvoice',  actions: ['view'] },
   { key: 'reports',           icon: BarChart3,       labelKey: 'reports',           actions: ['view'] },
   { key: 'craftsman_view',    icon: Hammer,          labelKey: 'craftsmanView',     actions: ['view'] },
+  { key: 'craftsman_wages',   icon: Wallet,          labelKey: 'craftsmanWages',    actions: ['view'] },
   { key: 'settings',          icon: Settings,        labelKey: 'settings',          actions: ['view', 'edit'] },
 ];
 

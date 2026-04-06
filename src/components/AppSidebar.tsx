@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Package, ShoppingCart, ClipboardList, LogOut, Scissors, Settings, Tag, BarChart3, Shield, UserCog, Hammer } from 'lucide-react';
+import { LayoutDashboard, Users, Package, ShoppingCart, ClipboardList, LogOut, Scissors, Settings, Tag, BarChart3, Shield, UserCog, Hammer, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { NavLink } from '@/components/NavLink';
 import { useData } from '@/context/DataContext';
@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { path: '/categories', labelKey: 'categories_menu', icon: Tag, permKey: 'categories', color: 'text-amber-400' },
   { path: '/reports', labelKey: 'reports', icon: BarChart3, permKey: 'reports', color: 'text-cyan-400' },
   { path: '/craftsman', labelKey: 'craftsmanView', icon: Hammer, permKey: 'craftsman_view', color: 'text-yellow-400' },
+  { path: '/craftsman-wages', labelKey: 'craftsmanWages', icon: Wallet, permKey: 'craftsman_wages', color: 'text-lime-400' },
   { path: '/staff', labelKey: 'staffMenu', icon: UserCog, permKey: 'staff', ownerOnly: true, color: 'text-pink-400' },
   { path: '/roles', labelKey: 'roles', icon: Shield, permKey: 'roles', ownerOnly: true, color: 'text-rose-400' },
   { path: '/settings', labelKey: 'settings', icon: Settings, permKey: 'settings', color: 'text-slate-400' },

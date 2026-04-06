@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ClipboardList, PlusCircle, Users, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
-import { BarChart3, Package, Settings, Shield, Tag, UserCog, Hammer } from 'lucide-react';
+import { BarChart3, Package, Settings, Shield, Tag, UserCog, Hammer, Wallet } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useData } from '@/context/DataContext';
 
@@ -28,6 +28,7 @@ export default function BottomNav() {
     { path: '/categories', icon: Tag, label: t('categories_menu'), permKey: 'categories' },
     { path: '/reports', icon: BarChart3, label: t('reports'), permKey: 'reports' },
     { path: '/craftsman', icon: Hammer, label: t('craftsmanView'), permKey: 'craftsman_view' },
+    { path: '/craftsman-wages', icon: Wallet, label: t('craftsmanWages'), permKey: 'craftsman_wages' },
     ...(userType === 'owner' ? [
       { path: '/staff', icon: UserCog, label: t('staffMenu'), permKey: 'staff' },
       { path: '/roles', icon: Shield, label: t('roles'), permKey: 'roles' },

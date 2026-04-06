@@ -41,6 +41,7 @@ const PAGE_TITLES: Record<string, { bn: string; en: string }> = {
   "/staff": { bn: "স্টাফ", en: "Staff" },
   "/roles": { bn: "ভূমিকা", en: "Roles" },
   "/craftsman": { bn: "কারিগর", en: "Craftsman" },
+  "/craftsman-wages": { bn: "কারিগর মজুরি", en: "Craftsman Wages" },
 };
 
 interface NotificationItem {
@@ -85,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const shopName = settings.shopNameBn || settings.shopName || "টেইলার শপ";
     const pageEntry = Object.entries(PAGE_TITLES).find(([path]) =>
-      path === "/" ? pathname === "/" : pathname.startsWith(path),
+      path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`),
     );
     const pageName = pageEntry
       ? (pageEntry[1][language as "bn" | "en"] ?? pageEntry[1].bn)

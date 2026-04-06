@@ -24,6 +24,7 @@ export function getFirstAllowedRoute(hasMenuPermission: (key: string) => boolean
     { permKey: 'categories', path: '/categories' },
     { permKey: 'reports', path: '/reports' },
     { permKey: 'craftsman_view', path: '/craftsman' },
+    { permKey: 'craftsman_wages', path: '/craftsman-wages' },
     { permKey: 'settings', path: '/settings' },
   ];
   for (const route of routeMap) {
