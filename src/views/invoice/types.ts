@@ -16,6 +16,7 @@ export interface InvoiceStaffRow {
 export interface InvoiceHeaderProps {
   title: string;
   invoiceNo: string;
+  referenceNo?: string;
   shopName: string;
   shopAddress?: string;
   shopPhone?: string;
@@ -25,6 +26,7 @@ export interface InvoiceHeaderProps {
   deliveryDateTitle?: string;
   deliveryDateLabel?: string;
   rangeTitle?: string;
+  rangeValue?: string;
   showDeliveryDate?: boolean;
   showRangeField?: boolean;
 }
@@ -51,6 +53,7 @@ export interface CraftsmanSlipProps {
   orderId: string;
   customerName?: string;
   invoiceNo: string;
+  referenceNo?: string;
   createdAt: string;
   assignedStaffName: string;
   deliveryDateText: string;
@@ -64,6 +67,7 @@ export interface CraftsmanSlipProps {
   assignedToLabel: string;
   deliveryDateLabel: string;
   rangeTitle?: string;
+  rangeValue?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }

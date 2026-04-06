@@ -25,12 +25,13 @@ interface CustomerInvoiceProps {
   customer: Customer;
   products: Product[];
   invoiceNo: string;
+  referenceNo?: string;
   settings: ShopSettings;
 }
 
 export const CustomerInvoice = forwardRef<HTMLDivElement, CustomerInvoiceProps>(
   function CustomerInvoice(
-    { order, customer, products, invoiceNo, settings },
+    { order, customer, products, invoiceNo, referenceNo, settings },
     ref,
   ) {
     const { t, language } = useLanguage();
@@ -47,6 +48,7 @@ export const CustomerInvoice = forwardRef<HTMLDivElement, CustomerInvoiceProps>(
         <InvoiceHeader
           title={t("customerInvoice")}
           invoiceNo={invoiceNo}
+          referenceNo={referenceNo}
           shopName={shopName}
           shopAddress={settings.shopAddress}
           shopPhone={settings.shopPhone}

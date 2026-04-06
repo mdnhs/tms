@@ -11,15 +11,23 @@ import { InvoiceModeTabs } from "./components/InvoiceModeTabs";
 import { CraftsmanInvoice } from "./components/CraftsmanInvoice";
 import { CustomerInvoice } from "./components/CustomerInvoice";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, Check } from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const BANGLADESH_RANGES = [
+  { value: "dhaka", bn: "ঢাকা রেঞ্জ", en: "Dhaka Range" },
+  { value: "chittagong", bn: "চট্টগ্রাম রেঞ্জ", en: "Chittagong Range" },
+  { value: "rajshahi", bn: "রাজশাহী রেঞ্জ", en: "Rajshahi Range" },
+  { value: "khulna", bn: "খুলনা রেঞ্জ", en: "Khulna Range" },
+  { value: "barishal", bn: "বরিশাল রেঞ্জ", en: "Barishal Range" },
+  { value: "sylhet", bn: "সিলেট রেঞ্জ", en: "Sylhet Range" },
+  { value: "rangpur", bn: "রংপুর রেঞ্জ", en: "Rangpur Range" },
+  { value: "mymensingh", bn: "ময়মনসিংহ রেঞ্জ", en: "Mymensingh Range" },
+];
 
 export default function InvoicePage() {
   const params = useParams();
@@ -42,6 +50,9 @@ export default function InvoicePage() {
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(
     null,
   );
+  const [craftsmanNote, setCraftsmanNote] = useState("");
+  const [selectedRange, setSelectedRange] = useState("");
+  const [referenceNo, setReferenceNo] = useState("");
 
   const customer = order
     ? customers.find((entry) => entry.id === order.customerId)
@@ -117,97 +128,145 @@ export default function InvoicePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in pb-8">
-      <InvoiceToolbar onDownloadPdf={handleDownloadPdf}>
-        {mode === "craftsman" && order.items.length > 1 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1.5 h-9"
-              >
-                {selectedItemIndex !== null
-                  ? (language === "bn"
-                      ? getProduct(
-                          products,
-                          order.items[selectedItemIndex].productId,
-                        )?.nameBn ||
-                        getProduct(
-                          products,
-                          order.items[selectedItemIndex].productId,
-                        )?.name
-                      : getProduct(
-                          products,
-                          order.items[selectedItemIndex].productId,
-                        )?.name ||
-                        getProduct(
-                          products,
-                          order.items[selectedItemIndex].productId,
-                        )?.nameBn) || t("productWise")
-                  : t("allProducts")}
-                <ChevronDown className="w-3.5 h-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>{t("productWiseInvoice")}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setSelectedItemIndex(null)}>
-                <Check
-                  className={`mr-2 h-4 w-4 ${selectedItemIndex === null ? "opacity-100" : "opacity-0"}`}
-                />
-                {t("allProducts")}
-              </DropdownMenuItem>
-              {order.items.map((item, index) => {
-                const product = getProduct(products, item.productId);
-                return (
-                  <DropdownMenuItem
-                    key={`${item.productId}-${index}`}
-                    onClick={() => setSelectedItemIndex(index)}
-                  >
-                    <Check
-                      className={`mr-2 h-4 w-4 ${selectedItemIndex === index ? "opacity-100" : "opacity-0"}`}
-                    />
-                    <span className="truncate">
-                      {language === "bn"
-                        ? product?.nameBn || product?.name || `Product ${index + 1}`
-                        : product?.name || product?.nameBn || `Product ${index + 1}`}
-                    </span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </InvoiceToolbar>
+    <div className="max-w-5xl mx-auto animate-fade-in pb-8">
+      <InvoiceToolbar onDownloadPdf={handleDownloadPdf} />
 
       {canCustomer && canCraftsman && (
         <InvoiceModeTabs mode={mode} onModeChange={setMode} />
       )}
 
       {mode === "craftsman" ? (
-        <CraftsmanInvoice
-          ref={printRef}
-          order={
-            selectedItemIndex !== null
-              ? { ...order, items: [order.items[selectedItemIndex]] }
-              : order
-          }
-          customer={customer}
-          products={products}
-          invoiceNo={invoiceNo}
-          assignedStaffName={assignedStaffName || ""}
-          settings={settings}
-        />
+        <div className="flex gap-4 items-start">
+          <div className="w-[672px] shrink-0">
+            <CraftsmanInvoice
+              ref={printRef}
+              order={
+                selectedItemIndex !== null
+                  ? { ...order, items: [order.items[selectedItemIndex]] }
+                  : order
+              }
+              customer={customer}
+              products={products}
+              invoiceNo={invoiceNo}
+              referenceNo={referenceNo}
+              assignedStaffName={assignedStaffName || ""}
+              settings={settings}
+              note={craftsmanNote}
+              rangeValue={
+                selectedRange
+                  ? (language === "bn"
+                      ? BANGLADESH_RANGES.find((r) => r.value === selectedRange)?.bn
+                      : BANGLADESH_RANGES.find((r) => r.value === selectedRange)?.en) || ""
+                  : ""
+              }
+            />
+          </div>
+          <div className="flex-1 sticky top-4 space-y-4 rounded-2xl border border-border bg-card p-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground font-bangla">
+                {t("referenceNo")}
+              </label>
+              <input
+                type="text"
+                className="mt-1 w-full text-sm font-bangla bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder={t("referenceNoPlaceholder")}
+                value={referenceNo}
+                onChange={(e) => setReferenceNo(e.target.value)}
+              />
+            </div>
+            {order.items.length > 1 && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground font-bangla">
+                  {t("productWiseInvoice")}
+                </label>
+                <Select
+                  value={selectedItemIndex !== null ? String(selectedItemIndex) : "all"}
+                  onValueChange={(val) => setSelectedItemIndex(val === "all" ? null : Number(val))}
+                >
+                  <SelectTrigger className="mt-1 rounded-xl font-bangla">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="font-bangla">
+                      {t("allProducts")}
+                    </SelectItem>
+                    {order.items.map((item, index) => {
+                      const product = getProduct(products, item.productId);
+                      return (
+                        <SelectItem
+                          key={`${item.productId}-${index}`}
+                          value={String(index)}
+                          className="font-bangla"
+                        >
+                          {language === "bn"
+                            ? product?.nameBn || product?.name || `Product ${index + 1}`
+                            : product?.name || product?.nameBn || `Product ${index + 1}`}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground font-bangla">
+                {t("range")}
+              </label>
+              <Select value={selectedRange} onValueChange={setSelectedRange}>
+                <SelectTrigger className="mt-1 rounded-xl font-bangla">
+                  <SelectValue placeholder={t("range")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {BANGLADESH_RANGES.map((range) => (
+                    <SelectItem key={range.value} value={range.value} className="font-bangla">
+                      {language === "bn" ? range.bn : range.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground font-bangla">
+                {t("notes")}
+              </label>
+              <textarea
+                className="mt-1 w-full text-sm font-bangla bg-background border border-border rounded-xl px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-ring leading-relaxed"
+                rows={4}
+                placeholder={t("notesPlaceholder")}
+                value={craftsmanNote}
+                onChange={(e) => setCraftsmanNote(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
       ) : (
-        <CustomerInvoice
-          ref={printRef}
-          order={order}
-          customer={customer}
-          products={products}
-          invoiceNo={invoiceNo}
-          settings={settings}
-        />
+        <div className="flex gap-4 items-start">
+          <div className="w-[672px] shrink-0">
+            <CustomerInvoice
+              ref={printRef}
+              order={order}
+              customer={customer}
+              products={products}
+              invoiceNo={invoiceNo}
+              referenceNo={referenceNo}
+              settings={settings}
+            />
+          </div>
+          <div className="flex-1 sticky top-4 space-y-4 rounded-2xl border border-border bg-card p-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground font-bangla">
+                {t("referenceNo")}
+              </label>
+              <input
+                type="text"
+                className="mt-1 w-full text-sm font-bangla bg-background border border-border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder={t("referenceNoPlaceholder")}
+                value={referenceNo}
+                onChange={(e) => setReferenceNo(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

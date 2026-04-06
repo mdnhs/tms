@@ -6,6 +6,7 @@ import { formatDate } from "../utils";
 export function InvoiceHeader({
   title,
   invoiceNo,
+  referenceNo,
   shopName,
   shopAddress,
   shopPhone,
@@ -15,6 +16,7 @@ export function InvoiceHeader({
   deliveryDateTitle,
   deliveryDateLabel,
   rangeTitle,
+  rangeValue,
   showDeliveryDate,
   showRangeField,
 }: InvoiceHeaderProps) {
@@ -61,6 +63,11 @@ export function InvoiceHeader({
           <p className="text-lg font-bold text-foreground font-mono">
             {invoiceNo}
           </p>
+          {referenceNo ? (
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+              Ref: {referenceNo}
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 justify-end">
             <Calendar className="w-3 h-3" />
             {formatDate(createdAt, language)}
@@ -74,7 +81,9 @@ export function InvoiceHeader({
               <p className="text-sm font-semibold text-muted-foreground font-bangla mb-1 ">
                 {rangeTitle}
               </p>
-              <div className="min-h-8 w-40 rounded-lg border border-slate-400 bg-white px-2 py-1" />
+              <div className="min-h-8 w-40 rounded-lg border border-slate-400 bg-white px-2 py-1 text-xs font-semibold text-slate-900 flex items-center font-bangla">
+                {rangeValue || ""}
+              </div>
             </div>
           ) : null}
           <div className="w-40 shrink-0 ml-auto">

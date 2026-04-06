@@ -10,6 +10,7 @@ export function CraftsmanSlip({
   orderId,
   customerName,
   invoiceNo,
+  referenceNo,
   createdAt,
   assignedStaffName,
   deliveryDateText,
@@ -23,6 +24,7 @@ export function CraftsmanSlip({
   assignedToLabel,
   deliveryDateLabel,
   rangeTitle,
+  rangeValue,
   children,
   footer,
 }: CraftsmanSlipProps) {
@@ -38,6 +40,7 @@ export function CraftsmanSlip({
         <InvoiceHeader
           title={title}
           invoiceNo={invoiceNo}
+          referenceNo={referenceNo}
           shopName={shopName}
           shopAddress={shopAddress}
           shopPhone={shopPhone}
@@ -53,6 +56,7 @@ export function CraftsmanSlip({
               : undefined
           }
           rangeTitle={showDeliveryDateField ? rangeTitle : undefined}
+          rangeValue={showDeliveryDateField ? rangeValue : undefined}
           showDeliveryDate={showDeliveryDateField}
           showRangeField={showDeliveryDateField}
         />

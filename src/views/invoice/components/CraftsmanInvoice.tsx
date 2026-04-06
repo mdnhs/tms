@@ -11,15 +11,18 @@ interface CraftsmanInvoiceProps {
   customer: Customer;
   products: Product[];
   invoiceNo: string;
+  referenceNo?: string;
   assignedStaffName: string;
   settings: ShopSettings;
+  note: string;
+  rangeValue: string;
 }
 
 export const CraftsmanInvoice = forwardRef<
   HTMLDivElement,
   CraftsmanInvoiceProps
 >(function CraftsmanInvoice(
-  { order, customer, products, invoiceNo, assignedStaffName, settings },
+  { order, customer, products, invoiceNo, referenceNo, assignedStaffName, settings, note, rangeValue },
   ref,
 ) {
   const { t, language } = useLanguage();
@@ -33,6 +36,7 @@ export const CraftsmanInvoice = forwardRef<
     orderId: order.id,
     customerName: customer.name,
     invoiceNo,
+    referenceNo,
     createdAt: order.createdAt,
     assignedStaffName,
     deliveryDateText,
@@ -46,6 +50,7 @@ export const CraftsmanInvoice = forwardRef<
     assignedToLabel: t("assignedTo"),
     deliveryDateLabel: t("deliveryDate"),
     rangeTitle: t("range"),
+    rangeValue,
     showDeliveryDateField: true,
   };
 
@@ -73,24 +78,36 @@ export const CraftsmanInvoice = forwardRef<
         {...sharedSlipProps}
         showShopHeader={false}
         footer={
-          <div className="grid grid-cols-2 gap-4 mt-4 pt-2">
-            <div className="flex flex-col justify-end min-h-[44px]">
-              <p className="text-[10px] text-slate-500 mb-3 font-bangla">
-                {t("wages")}
-              </p>
-              <div className="pt-1 text-xs font-medium text-slate-700">
-                --------------------------------------------
+          <>
+            {note && (
+              <div className="mt-3 pt-2 border-t border-dashed border-slate-300">
+                <p className="text-[10px] text-slate-500 font-bangla mb-0.5">
+                  {t("notes")}
+                </p>
+                <p className="text-xs text-slate-700 leading-relaxed font-bangla whitespace-pre-line">
+                  {note}
+                </p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4 mt-4 pt-2">
+              <div className="flex flex-col justify-end min-h-[44px]">
+                <p className="text-[10px] text-slate-500 mb-3 font-bangla">
+                  {t("wages")}
+                </p>
+                <div className="pt-1 text-xs font-medium text-slate-700">
+                  --------------------------------------------
+                </div>
+              </div>
+              <div className="flex flex-col justify-end items-end min-h-[44px]">
+                <p className="text-[10px] text-slate-500 mb-3 font-bangla">
+                  {t("signature")}
+                </p>
+                <div className="pt-1 text-right text-xs font-medium text-slate-700">
+                  --------------------------------------------
+                </div>
               </div>
             </div>
-            <div className="flex flex-col justify-end items-end min-h-[44px]">
-              <p className="text-[10px] text-slate-500 mb-3 font-bangla">
-                {t("signature")}
-              </p>
-              <div className="pt-1 text-right text-xs font-medium text-slate-700">
-                --------------------------------------------
-              </div>
-            </div>
-          </div>
+          </>
         }
       >
         <CraftsmanItemsGrid

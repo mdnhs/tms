@@ -286,6 +286,8 @@ const translations: Record<string, Record<Language, string>> = {
   },
   addressPlaceholder: { bn: "ঠিকানা লিখুন", en: "Enter address" },
   notesPlaceholder: { bn: "অতিরিক্ত তথ্য", en: "Additional info" },
+  referenceNo: { bn: "রেফারেন্স নং", en: "Reference No" },
+  referenceNoPlaceholder: { bn: "অফলাইন ইনভয়েস নং", en: "Offline invoice no." },
   customerUpdated: {
     bn: "✅ কাস্টমার আপডেট হয়েছে",
     en: "✅ Customer updated",
