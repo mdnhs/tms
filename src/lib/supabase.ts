@@ -126,7 +126,10 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL DEFAULT 'pending',
   assigned_to TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  items JSONB
+  items JSONB,
+  ref_no TEXT NOT NULL DEFAULT '',
+  invoice_note TEXT NOT NULL DEFAULT '',
+  invoice_range TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_orders_shop ON orders(shop_id);
 CREATE INDEX IF NOT EXISTS idx_orders_shop_created_at ON orders(shop_id, created_at DESC);

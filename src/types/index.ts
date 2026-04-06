@@ -83,6 +83,9 @@ export interface Order {
   status: OrderStatus;
   assignedTo?: string;
   createdAt: string;
+  refNo?: string;
+  invoiceNote?: string;
+  invoiceRange?: string;
 }
 
 export type OrderHistoryAction = 'created' | 'edited' | 'status_changed' | 'payment_collected' | 'deleted';

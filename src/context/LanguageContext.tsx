@@ -61,6 +61,8 @@ const translations: Record<string, Record<Language, string>> = {
   address: { bn: "ঠিকানা", en: "Address" },
   notes: { bn: "নোটস", en: "Notes" },
   save: { bn: "সেভ", en: "Save" },
+  saving: { bn: "সেভ হচ্ছে...", en: "Saving..." },
+  saved: { bn: "সেভ হয়েছে ✓", en: "Saved ✓" },
   update: { bn: "আপডেট", en: "Update" },
   cancel: { bn: "বাতিল", en: "Cancel" },
   delete: { bn: "মুছে ফেলুন", en: "Delete" },

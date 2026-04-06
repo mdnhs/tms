@@ -50,41 +50,16 @@ interface OrderRow {
   status: string;
   assigned_to: string | null;
   created_at: string;
+  ref_no: string | null;
+  invoice_note: string | null;
+  invoice_range: string | null;
 }
 
 function parseOrder(row: OrderRow) {
   const items = typeof row.items === 'string' ? JSON.parse(row.items) : row.items;
-
-  if (items) {
-    return {
-      id: row.id,
-      customerId: row.customer_id,
-      items,
-      totalPrice: row.total_price,
-      advancePaid: row.advance_paid,
-      dueAmount: row.due_amount,
-      deliveryDate: row.delivery_date,
-      specialNotes: row.special_notes || undefined,
-      status: row.status,
-      assignedTo: row.assigned_to || undefined,
-      createdAt: row.created_at,
-    };
-  }
-
-  const measurements = typeof row.measurements === 'string'
-    ? JSON.parse(row.measurements || '[]')
-    : (row.measurements || []);
-
-  return {
+  const shared = {
     id: row.id,
     customerId: row.customer_id,
-    items: [{
-      productId: row.product_id || '',
-      measurements,
-      quantity: row.quantity || 1,
-      unitPrice: row.unit_price || 0,
-      totalPrice: row.total_price || 0,
-    }],
     totalPrice: row.total_price,
     advancePaid: row.advance_paid,
     dueAmount: row.due_amount,
@@ -93,6 +68,28 @@ function parseOrder(row: OrderRow) {
     status: row.status,
     assignedTo: row.assigned_to || undefined,
     createdAt: row.created_at,
+    refNo: row.ref_no || '',
+    invoiceNote: row.invoice_note || '',
+    invoiceRange: row.invoice_range || '',
+  };
+
+  if (items) {
+    return { ...shared, items };
+  }
+
+  const measurements = typeof row.measurements === 'string'
+    ? JSON.parse(row.measurements || '[]')
+    : (row.measurements || []);
+
+  return {
+    ...shared,
+    items: [{
+      productId: row.product_id || '',
+      measurements,
+      quantity: row.quantity || 1,
+      unitPrice: row.unit_price || 0,
+      totalPrice: row.total_price || 0,
+    }],
   };
 }
 

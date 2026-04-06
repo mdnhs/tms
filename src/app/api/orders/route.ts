@@ -10,34 +10,9 @@ export const preferredRegion = 'sin1';
 function parseOrder(row: any) {
   const items = typeof row.items === 'string' ? JSON.parse(row.items) : row.items;
 
-  if (items) {
-    return {
-      id: row.id,
-      customerId: row.customer_id,
-      items,
-      totalPrice: row.total_price,
-      advancePaid: row.advance_paid,
-      dueAmount: row.due_amount,
-      deliveryDate: row.delivery_date,
-      specialNotes: row.special_notes,
-      status: row.status,
-      assignedTo: row.assigned_to,
-      createdAt: row.created_at,
-    };
-  }
-  const measurements = typeof row.measurements === 'string'
-    ? JSON.parse(row.measurements || '[]')
-    : (row.measurements || []);
-  return {
+  const shared = {
     id: row.id,
     customerId: row.customer_id,
-    items: [{
-      productId: row.product_id || '',
-      measurements,
-      quantity: row.quantity || 1,
-      unitPrice: row.unit_price || 0,
-      totalPrice: row.total_price || 0,
-    }],
     totalPrice: row.total_price,
     advancePaid: row.advance_paid,
     dueAmount: row.due_amount,
@@ -46,6 +21,26 @@ function parseOrder(row: any) {
     status: row.status,
     assignedTo: row.assigned_to,
     createdAt: row.created_at,
+    refNo: row.ref_no || '',
+    invoiceNote: row.invoice_note || '',
+    invoiceRange: row.invoice_range || '',
+  };
+
+  if (items) {
+    return { ...shared, items };
+  }
+  const measurements = typeof row.measurements === 'string'
+    ? JSON.parse(row.measurements || '[]')
+    : (row.measurements || []);
+  return {
+    ...shared,
+    items: [{
+      productId: row.product_id || '',
+      measurements,
+      quantity: row.quantity || 1,
+      unitPrice: row.unit_price || 0,
+      totalPrice: row.total_price || 0,
+    }],
   };
 }
 
@@ -77,7 +72,7 @@ export async function POST(req: NextRequest) {
     setShopIdCache(session.user.id, shopId);
   }
   const body = await req.json();
-  const { id, customerId, items, totalPrice, advancePaid, dueAmount, deliveryDate, specialNotes, status, assignedTo, createdAt } = body;
+  const { id, customerId, items, totalPrice, advancePaid, dueAmount, deliveryDate, specialNotes, status, assignedTo, createdAt, refNo, invoiceNote, invoiceRange } = body;
   const orderId = id || genId();
   const firstItem = items?.[0] || {};
 
@@ -101,6 +96,9 @@ export async function POST(req: NextRequest) {
       assigned_to: assignedTo || null,
       created_at: createdAt || new Date().toISOString(),
       items: items || [],
+      ref_no: refNo || '',
+      invoice_note: invoiceNote || '',
+      invoice_range: invoiceRange || '',
     })
     .select()
     .single();
@@ -116,30 +114,37 @@ export async function PATCH(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
-  const { id, customerId, items, totalPrice, advancePaid, dueAmount, deliveryDate, specialNotes, status, assignedTo } = body;
+  const { id, customerId, items, totalPrice, advancePaid, dueAmount, deliveryDate, specialNotes, status, assignedTo, refNo, invoiceNote, invoiceRange } = body;
   const firstItem = items?.[0] || {};
 
   const shopId = await getShopId(session.user.id);
   if (!shopId) return NextResponse.json({ error: 'No shop found' }, { status: 400 });
 
   const cloud = getCloudDb(shopId);
+
+  // Build update payload — only include invoice fields if provided
+  const updatePayload: Record<string, unknown> = {
+    customer_id: customerId,
+    product_id: firstItem.productId || '',
+    measurements: firstItem.measurements || [],
+    quantity: firstItem.quantity || 1,
+    unit_price: firstItem.unitPrice || 0,
+    total_price: totalPrice || 0,
+    advance_paid: advancePaid || 0,
+    due_amount: dueAmount || 0,
+    delivery_date: deliveryDate || '',
+    special_notes: specialNotes || null,
+    status: status || 'pending',
+    assigned_to: assignedTo || null,
+    items: items || [],
+  };
+  if (refNo !== undefined) updatePayload.ref_no = refNo;
+  if (invoiceNote !== undefined) updatePayload.invoice_note = invoiceNote;
+  if (invoiceRange !== undefined) updatePayload.invoice_range = invoiceRange;
+
   const { data, error } = await cloud
     .from('orders')
-    .update({
-      customer_id: customerId,
-      product_id: firstItem.productId || '',
-      measurements: firstItem.measurements || [],
-      quantity: firstItem.quantity || 1,
-      unit_price: firstItem.unitPrice || 0,
-      total_price: totalPrice || 0,
-      advance_paid: advancePaid || 0,
-      due_amount: dueAmount || 0,
-      delivery_date: deliveryDate || '',
-      special_notes: specialNotes || null,
-      status: status || 'pending',
-      assigned_to: assignedTo || null,
-      items: items || [],
-    })
+    .update(updatePayload)
     .eq('id', id)
     .select()
     .single();

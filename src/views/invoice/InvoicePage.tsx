@@ -1,6 +1,6 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useData } from "@/context/DataContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useInvoiceData } from "./hooks/useInvoiceData";
@@ -10,6 +10,8 @@ import { InvoiceToolbar } from "./components/InvoiceToolbar";
 import { InvoiceModeTabs } from "./components/InvoiceModeTabs";
 import { CraftsmanInvoice } from "./components/CraftsmanInvoice";
 import { CustomerInvoice } from "./components/CustomerInvoice";
+import { Button } from "@/components/ui/button";
+import { Save } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -53,6 +55,52 @@ export default function InvoicePage() {
   const [craftsmanNote, setCraftsmanNote] = useState("");
   const [selectedRange, setSelectedRange] = useState("");
   const [referenceNo, setReferenceNo] = useState("");
+  const [initialized, setInitialized] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Initialize from saved order data
+  useEffect(() => {
+    if (order && !initialized) {
+      setReferenceNo(order.refNo || "");
+      setCraftsmanNote(order.invoiceNote || "");
+      setSelectedRange(order.invoiceRange || "");
+      setInitialized(true);
+    }
+  }, [order, initialized]);
+
+  const handleSaveInvoiceFields = async () => {
+    if (!order) return;
+    setSaving(true);
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id: order.id,
+          customerId: order.customerId,
+          items: order.items,
+          totalPrice: order.totalPrice,
+          advancePaid: order.advancePaid,
+          dueAmount: order.dueAmount,
+          deliveryDate: order.deliveryDate,
+          specialNotes: order.specialNotes,
+          status: order.status,
+          assignedTo: order.assignedTo,
+          refNo: referenceNo,
+          invoiceNote: craftsmanNote,
+          invoiceRange: selectedRange,
+        }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      // silent
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const customer = order
     ? customers.find((entry) => entry.id === order.customerId)
@@ -129,7 +177,37 @@ export default function InvoicePage() {
 
   return (
     <div className="max-w-5xl mx-auto animate-fade-in pb-8">
-      <InvoiceToolbar onDownloadPdf={handleDownloadPdf} />
+      <InvoiceToolbar onDownloadPdf={handleDownloadPdf}>
+        {mode === "craftsman" && order.items.length > 1 && (
+          <Select
+            value={selectedItemIndex !== null ? String(selectedItemIndex) : "all"}
+            onValueChange={(val) => setSelectedItemIndex(val === "all" ? null : Number(val))}
+          >
+            <SelectTrigger className="h-9 rounded-xl font-bangla w-auto gap-1.5 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="font-bangla">
+                {t("allProducts")}
+              </SelectItem>
+              {order.items.map((item, index) => {
+                const product = getProduct(products, item.productId);
+                return (
+                  <SelectItem
+                    key={`${item.productId}-${index}`}
+                    value={String(index)}
+                    className="font-bangla"
+                  >
+                    {language === "bn"
+                      ? product?.nameBn || product?.name || `Product ${index + 1}`
+                      : product?.name || product?.nameBn || `Product ${index + 1}`}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        )}
+      </InvoiceToolbar>
 
       {canCustomer && canCraftsman && (
         <InvoiceModeTabs mode={mode} onModeChange={setMode} />
@@ -174,40 +252,6 @@ export default function InvoicePage() {
                 onChange={(e) => setReferenceNo(e.target.value)}
               />
             </div>
-            {order.items.length > 1 && (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground font-bangla">
-                  {t("productWiseInvoice")}
-                </label>
-                <Select
-                  value={selectedItemIndex !== null ? String(selectedItemIndex) : "all"}
-                  onValueChange={(val) => setSelectedItemIndex(val === "all" ? null : Number(val))}
-                >
-                  <SelectTrigger className="mt-1 rounded-xl font-bangla">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="font-bangla">
-                      {t("allProducts")}
-                    </SelectItem>
-                    {order.items.map((item, index) => {
-                      const product = getProduct(products, item.productId);
-                      return (
-                        <SelectItem
-                          key={`${item.productId}-${index}`}
-                          value={String(index)}
-                          className="font-bangla"
-                        >
-                          {language === "bn"
-                            ? product?.nameBn || product?.name || `Product ${index + 1}`
-                            : product?.name || product?.nameBn || `Product ${index + 1}`}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground font-bangla">
                 {t("range")}
@@ -237,6 +281,14 @@ export default function InvoicePage() {
                 onChange={(e) => setCraftsmanNote(e.target.value)}
               />
             </div>
+            <Button
+              onClick={handleSaveInvoiceFields}
+              disabled={saving}
+              className="w-full rounded-xl gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? t("saving") : saved ? t("saved") : t("save")}
+            </Button>
           </div>
         </div>
       ) : (
@@ -265,6 +317,14 @@ export default function InvoicePage() {
                 onChange={(e) => setReferenceNo(e.target.value)}
               />
             </div>
+            <Button
+              onClick={handleSaveInvoiceFields}
+              disabled={saving}
+              className="w-full rounded-xl gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? t("saving") : saved ? t("saved") : t("save")}
+            </Button>
           </div>
         </div>
       )}
