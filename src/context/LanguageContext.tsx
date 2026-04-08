@@ -65,6 +65,7 @@ const translations: Record<string, Record<Language, string>> = {
   saved: { bn: "সেভ হয়েছে ✓", en: "Saved ✓" },
   update: { bn: "আপডেট", en: "Update" },
   cancel: { bn: "বাতিল", en: "Cancel" },
+  clear: { bn: "মুছুন", en: "Clear" },
   delete: { bn: "মুছে ফেলুন", en: "Delete" },
   edit: { bn: "এডিট", en: "Edit" },
   add: { bn: "যোগ করুন", en: "Add" },
@@ -282,6 +283,10 @@ const translations: Record<string, Record<Language, string>> = {
   nameRequired: { bn: "নাম *", en: "Name *" },
   customerNamePlaceholder: { bn: "কাস্টমারের নাম", en: "Customer name" },
   phoneRequired: { bn: "ফোন নম্বর *", en: "Phone *" },
+  duplicatePhone: {
+    bn: "এই ফোন নম্বর ইতিমধ্যে ব্যবহৃত",
+    en: "This phone number is already in use",
+  },
   invalidBdMobile: {
     bn: "সঠিক বাংলাদেশি মোবাইল নম্বর দিন",
     en: "Enter a valid Bangladeshi mobile number",

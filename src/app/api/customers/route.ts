@@ -63,6 +63,13 @@ export async function POST(req: NextRequest) {
   const created = createdAt || new Date().toISOString();
 
   const cloud = getCloudDb(shopId);
+
+  // Check for duplicate phone
+  const { data: existing } = await cloud.from('customers').select('id, name').eq('shop_id', shopId).eq('phone', normalizedPhone).limit(1);
+  if (existing && existing.length > 0) {
+    return NextResponse.json({ error: `Phone number already used by "${existing[0].name}"` }, { status: 409 });
+  }
+
   const row = { id: customerId, shop_id: shopId, name, phone: normalizedPhone, address: address || '', notes: notes || null, photo: photo || null, created_at: created };
   const { data, error } = await cloud.from('customers').insert(row).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -81,6 +88,13 @@ export async function PATCH(req: NextRequest) {
   }
 
   const cloud = getCloudDb(shopId);
+
+  // Check for duplicate phone (exclude current customer)
+  const { data: existing } = await cloud.from('customers').select('id, name').eq('shop_id', shopId).eq('phone', normalizedPhone).neq('id', id).limit(1);
+  if (existing && existing.length > 0) {
+    return NextResponse.json({ error: `Phone number already used by "${existing[0].name}"` }, { status: 409 });
+  }
+
   const { data, error } = await cloud.from('customers').update({ name, phone: normalizedPhone, address: address || '', notes: notes || null, photo: photo || null }).eq('id', id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ customer: { id: data.id, name: data.name, phone: data.phone, address: data.address, notes: data.notes, photo: data.photo, createdAt: data.created_at } });

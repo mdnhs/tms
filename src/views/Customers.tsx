@@ -163,6 +163,19 @@ export default function Customers() {
       return;
     }
 
+    // Check for duplicate phone number
+    const duplicate = customers.find(
+      c => c.phone === normalizedPhone && (!editing || c.id !== editing.id)
+    );
+    if (duplicate) {
+      toast({
+        title: t('duplicatePhone'),
+        description: `${duplicate.name} (${duplicate.phone})`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (editing) {
