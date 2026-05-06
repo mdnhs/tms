@@ -1,0 +1,15 @@
+export const APP_ROUTES = {
+  home: '/',
+  dashboard: '/dashboard',
+  orders: { index: '/orders', create: '/create-order' },
+  customers: { index: '/customers' },
+  products: { index: '/products' },
+  categories: { index: '/categories' },
+  craftsman: { index: '/craftsman', wages: '/craftsman-wages' },
+  reports: { index: '/reports' },
+  settings: { index: '/settings' },
+  staff: { index: '/staff' },
+  roles: { index: '/roles', new: '/roles/new', detail: (id: string) => `/roles/${id}` },
+  invoice: { detail: (id: string) => `/invoice/${id}` },
+  auth: { login: '/login', resetPassword: '/reset-password' },
+} as const;

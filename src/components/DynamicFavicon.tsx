@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useData } from '@/context/DataContext';
+import { useData } from '@/contexts/DataContext';
 
 export function DynamicFavicon() {
   const { settings } = useData();

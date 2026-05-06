@@ -3,9 +3,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { DataProvider } from '@/context/DataContext';
-import { ThemeProvider } from '@/context/ThemeContext';
-import { LanguageProvider } from '@/context/LanguageContext';
+import { DataProvider } from '@/contexts/DataContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { DynamicFavicon } from '@/components/DynamicFavicon';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 

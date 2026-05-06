@@ -1,0 +1,15 @@
+export const API_ROUTES = {
+  auth: { base: '/api/auth' },
+  orders: { list: '/api/orders', ordersListData: '/api/orders-list-data', createOrderData: '/api/create-order-data', orderHistory: '/api/order-history' },
+  customers: { list: '/api/customers', pageData: '/api/customers-page-data' },
+  products: { list: '/api/products', pageData: '/api/products-page-data' },
+  categories: { list: '/api/categories' },
+  settings: { base: '/api/settings' },
+  staff: { list: '/api/shop-staff', create: '/api/create-staff-account', management: '/api/staff-management-data', permissions: '/api/staff-permissions' },
+  roles: { list: '/api/shop-roles' },
+  shops: { base: '/api/shops' },
+  dashboard: { summary: '/api/dashboard-summary', appShell: '/api/app-shell-data' },
+  invoice: { detail: (id: string) => `/api/invoice-data/${id}` },
+  sms: { balance: '/api/sms/balance', send: '/api/sms/send' },
+  data: { export: '/api/data-export', import: '/api/data-import', clear: '/api/data-clear', reset: '/api/data-reset-settings', seed: '/api/seed-demo' },
+} as const;

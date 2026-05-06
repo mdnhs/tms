@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useData } from '@/context/DataContext';
-import Layout from '@/components/Layout';
-import Dashboard from '@/views/Dashboard';
+import { useData } from '@/contexts/DataContext';
+import Layout from '@/components/layout/Layout';
+import Dashboard from '@/features/dashboard/components';
 
 function LoadingSpinner() {
   return (
