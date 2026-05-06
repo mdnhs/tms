@@ -22,7 +22,17 @@ export const CraftsmanInvoice = forwardRef<
   HTMLDivElement,
   CraftsmanInvoiceProps
 >(function CraftsmanInvoice(
-  { order, customer, products, invoiceNo, referenceNo, assignedStaffName, settings, note, rangeValue },
+  {
+    order,
+    customer,
+    products,
+    invoiceNo,
+    referenceNo,
+    assignedStaffName,
+    settings,
+    note,
+    rangeValue,
+  },
   ref,
 ) {
   const { t, language } = useLanguage();
@@ -63,6 +73,13 @@ export const CraftsmanInvoice = forwardRef<
 
       <CraftsmanSlip showShopHeader {...sharedSlipProps}>
         <CraftsmanItemsGrid order={order} products={products} />
+        <div className="flex justify-end mt-2 mr-20">
+          <img
+            src="/tailor-design.svg"
+            alt="tailor design"
+            className="h-40 object-contain"
+          />
+        </div>
       </CraftsmanSlip>
 
       <div className="px-3.5 md:px-4 py-1.5 bg-slate-50 border-y border-dashed border-slate-400 text-center flex items-center justify-center gap-2">
