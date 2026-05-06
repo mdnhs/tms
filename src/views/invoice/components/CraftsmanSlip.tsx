@@ -62,6 +62,17 @@ export function CraftsmanSlip({
         />
       ) : null}
 
+      {!showShopHeader && rangeTitle ? (
+        <div className="mb-2 flex items-center gap-2">
+          <p className="text-[10px] font-semibold text-slate-500 font-bangla shrink-0">
+            {rangeTitle}:
+          </p>
+          <div className="min-h-6 rounded border border-slate-400 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-900 font-bangla flex items-center">
+            {rangeValue || ""}
+          </div>
+        </div>
+      ) : null}
+
       <div
         className={`grid grid-cols-2 gap-2.5 ${showShopHeader ? "mt-2.5 mb-3" : "mb-3"}`}
       >

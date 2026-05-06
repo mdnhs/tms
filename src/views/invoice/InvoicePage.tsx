@@ -21,14 +21,69 @@ import {
 } from "@/components/ui/select";
 
 const BANGLADESH_RANGES = [
+  {
+    value: "immigration-police",
+    bn: "বাংলাদেশ ইমিগ্রেশন পুলিশ (BIP)",
+    en: "Bangladesh Immigration Police (BIP)",
+  },
+
+  {
+    value: "dmp",
+    bn: "ঢাকা মেট্রোপলিটন পুলিশ (DMP)",
+    en: "Dhaka Metropolitan Police (DMP)",
+  },
+  {
+    value: "cmp",
+    bn: "চট্টগ্রাম মেট্রোপলিটন পুলিশ (CMP)",
+    en: "Chittagong Metropolitan Police (CMP)",
+  },
+  {
+    value: "rmp",
+    bn: "রাজশাহী মেট্রোপলিটন পুলিশ (RMP)",
+    en: "Rajshahi Metropolitan Police (RMP)",
+  },
+  {
+    value: "kmp",
+    bn: "খুলনা মেট্রোপলিটন পুলিশ (KMP)",
+    en: "Khulna Metropolitan Police (KMP)",
+  },
+  {
+    value: "bmp",
+    bn: "বরিশাল মেট্রোপলিটন পুলিশ (BMP)",
+    en: "Barishal Metropolitan Police (BMP)",
+  },
+  {
+    value: "smp",
+    bn: "সিলেট মেট্রোপলিটন পুলিশ (SMP)",
+    en: "Sylhet Metropolitan Police (SMP)",
+  },
+  {
+    value: "rpmp",
+    bn: "রংপুর মেট্রোপলিটন পুলিশ (RPMP)",
+    en: "Rangpur Metropolitan Police (RPMP)",
+  },
+  {
+    value: "mmp",
+    bn: "ময়মনসিংহ মেট্রোপলিটন পুলিশ (MMP)",
+    en: "Mymensingh Metropolitan Police (MMP)",
+  },
+
   { value: "dhaka", bn: "ঢাকা রেঞ্জ", en: "Dhaka Range" },
-  { value: "chittagong", bn: "চট্টগ্রাম রেঞ্জ", en: "Chittagong Range" },
+  {
+    value: "chittagong",
+    bn: "চট্টগ্রাম রেঞ্জ",
+    en: "Chittagong Range",
+  },
   { value: "rajshahi", bn: "রাজশাহী রেঞ্জ", en: "Rajshahi Range" },
   { value: "khulna", bn: "খুলনা রেঞ্জ", en: "Khulna Range" },
   { value: "barishal", bn: "বরিশাল রেঞ্জ", en: "Barishal Range" },
   { value: "sylhet", bn: "সিলেট রেঞ্জ", en: "Sylhet Range" },
   { value: "rangpur", bn: "রংপুর রেঞ্জ", en: "Rangpur Range" },
-  { value: "mymensingh", bn: "ময়মনসিংহ রেঞ্জ", en: "Mymensingh Range" },
+  {
+    value: "mymensingh",
+    bn: "ময়মনসিংহ রেঞ্জ",
+    en: "Mymensingh Range",
+  },
 ];
 
 export default function InvoicePage() {
@@ -37,8 +92,7 @@ export default function InvoicePage() {
   const { settings, hasActionPermission, userType } = useData();
   const { t, language } = useLanguage();
 
-  const { loading, order, customers, products, staffList } =
-    useInvoiceData(id);
+  const { loading, order, customers, products, staffList } = useInvoiceData(id);
 
   const canCustomer =
     userType === "owner" || hasActionPermission("customer_invoice", "view");
@@ -180,8 +234,12 @@ export default function InvoicePage() {
       <InvoiceToolbar onDownloadPdf={handleDownloadPdf}>
         {mode === "craftsman" && order.items.length > 1 && (
           <Select
-            value={selectedItemIndex !== null ? String(selectedItemIndex) : "all"}
-            onValueChange={(val) => setSelectedItemIndex(val === "all" ? null : Number(val))}
+            value={
+              selectedItemIndex !== null ? String(selectedItemIndex) : "all"
+            }
+            onValueChange={(val) =>
+              setSelectedItemIndex(val === "all" ? null : Number(val))
+            }
           >
             <SelectTrigger className="h-9 rounded-xl font-bangla w-auto gap-1.5 text-sm">
               <SelectValue />
@@ -199,8 +257,12 @@ export default function InvoicePage() {
                     className="font-bangla"
                   >
                     {language === "bn"
-                      ? product?.nameBn || product?.name || `Product ${index + 1}`
-                      : product?.name || product?.nameBn || `Product ${index + 1}`}
+                      ? product?.nameBn ||
+                        product?.name ||
+                        `Product ${index + 1}`
+                      : product?.name ||
+                        product?.nameBn ||
+                        `Product ${index + 1}`}
                   </SelectItem>
                 );
               })}
@@ -233,8 +295,10 @@ export default function InvoicePage() {
               rangeValue={
                 selectedRange
                   ? (language === "bn"
-                      ? BANGLADESH_RANGES.find((r) => r.value === selectedRange)?.bn
-                      : BANGLADESH_RANGES.find((r) => r.value === selectedRange)?.en) || ""
+                      ? BANGLADESH_RANGES.find((r) => r.value === selectedRange)
+                          ?.bn
+                      : BANGLADESH_RANGES.find((r) => r.value === selectedRange)
+                          ?.en) || ""
                   : ""
               }
             />
@@ -262,7 +326,11 @@ export default function InvoicePage() {
                 </SelectTrigger>
                 <SelectContent>
                   {BANGLADESH_RANGES.map((range) => (
-                    <SelectItem key={range.value} value={range.value} className="font-bangla">
+                    <SelectItem
+                      key={range.value}
+                      value={range.value}
+                      className="font-bangla"
+                    >
                       {language === "bn" ? range.bn : range.en}
                     </SelectItem>
                   ))}
