@@ -68,6 +68,7 @@ export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
   trustedOrigins: [
     process.env.BETTER_AUTH_URL || 'http://localhost:3000',
+    'https://tmsbd.vercel.app',
     'http://localhost:3001',
   ],
 });

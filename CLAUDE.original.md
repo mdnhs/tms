@@ -1,13 +1,13 @@
 # Tailor Shobai - Tailoring Shop Management System
 
 ## Project Overview
- Bengali-language tailoring shop POS/management system built w/ Next.js App Router and Supabase (PostgreSQL) database.
+A Bengali-language tailoring shop POS/management system built with Next.js App Router and Supabase (PostgreSQL) database.
 
 ## Tech Stack
 - **Framework**: Next.js 15+ (App Router, `'use client'` pages)
 - **Language**: TypeScript
 - **Auth**: better-auth (PostgreSQL-backed via Supabase)
-- **Database**: Supabase (PostgreSQL w/ JSONB columns)
+- **Database**: Supabase (PostgreSQL with JSONB columns)
 - **UI**: Tailwind CSS + shadcn/ui (Radix primitives)
 - **Icons**: lucide-react
 - **Charts**: Recharts
@@ -34,7 +34,7 @@ src/
 ### Database Pattern
 - `getGlobalSupabase()` → Supabase client from env vars
 - `getCloudDb(shopId)` → Returns global Supabase client
-- All data stored in Supabase w/ JSONB columns (auto-parsed)
+- All data stored in Supabase with JSONB columns (auto-parsed)
 - Auth uses PostgreSQL via `DATABASE_URL` (Better Auth + pg driver)
 
 ### Environment Variables Required
@@ -48,17 +48,16 @@ src/
 All routes in `src/app/api/` follow this pattern:
 1. Authenticate via `auth.api.getSession()`
 2. Get `shopId` from user via `getShopId(userId)`
-3. Use `getCloudDb(shopId)`  `getGlobalSupabase()` for database operations
+3. Use `getCloudDb(shopId)` or `getGlobalSupabase()` for database operations
 
 ### UI Conventions
 - Bengali (বাংলা) as primary language
 - All labels use `t()` from LanguageContext
-- Theme-aware w/ CSS custom properties
-- Mobile-responsive w/ sidebar (desktop) + bottom nav (mobile)
+- Theme-aware with CSS custom properties
+- Mobile-responsive with sidebar (desktop) + bottom nav (mobile)
 - shadcn/ui components in `src/components/ui/`
 
 ## Commands
 - `npm run dev` — Start dev server
 - `npm run build` — Production build
 - `npm run lint` — ESLint
-
